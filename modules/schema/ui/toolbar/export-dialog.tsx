@@ -13,12 +13,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type AdapterKey, adapters } from "../../adapters";
 import { useExport } from "../../hooks/use-export";
+import { useSchemaStore } from "../../store/schema.store";
 import { useUIStore } from "../../store/ui.store";
 import { SyntaxHighlight } from "../preview/syntax-highlight";
 
 export function ExportDialog() {
   const open = useUIStore((s) => s.exportDialogOpen);
   const setOpen = useUIStore((s) => s.openExportDialog);
+  const project = useSchemaStore((s) => s.project);
   const [tab, setTab] = useState<AdapterKey>("drizzle");
   const [copied, setCopied] = useState(false);
   const { code, error, download, copy } = useExport(tab);
@@ -33,7 +35,7 @@ export function ExportDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-[620px]!">
         <DialogHeader>
           <DialogTitle>Export schema</DialogTitle>
           <DialogDescription>
@@ -56,10 +58,11 @@ export function ExportDialog() {
                 {error}
               </div>
             ) : (
-              <ScrollArea className="h-80 rounded-2xl border border-border bg-background">
+              <ScrollArea className="h-80 rounded-xl">
                 <SyntaxHighlight
                   code={code}
                   language={adapters[tab].language}
+                  filename={`${project.name}.${adapters[tab].extension}`}
                 />
               </ScrollArea>
             )}
