@@ -54,7 +54,7 @@ export function PropertiesPanel() {
   }
 
   return (
-    <aside className="flex m-2 ml-0 shrink-0 flex-col bg-background border rounded-xl w-80!">
+    <aside className="flex m-2 ml-0 shrink-0 flex-col bg-background border rounded-xl w-70!">
       <div className="flex items-center justify-between px-4 py-3">
         <h2 className="font-heading text-sm font-medium">{title}</h2>
         <Button
