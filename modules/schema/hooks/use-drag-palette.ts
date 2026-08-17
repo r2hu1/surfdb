@@ -54,7 +54,10 @@ export function useDropField(tableId: string) {
     }
   }, []);
 
-  const onDragLeave = useCallback(() => {
+  const onDragLeave = useCallback((event: React.DragEvent) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      return;
+    }
     setIsOver(false);
   }, []);
 

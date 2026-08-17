@@ -26,8 +26,10 @@ interface UIStore {
   select: (target: SelectionTarget, id: string | null) => void;
   setSidebarTab: (tab: SidebarTab) => void;
   toggleSidebar: () => void;
+  setSidebarOpen: (open: boolean) => void;
   togglePropertiesPanel: () => void;
   toggleCodePreview: () => void;
+  setCodePreviewOpen: (open: boolean) => void;
   openExportDialog: (open: boolean) => void;
   openImportDialog: (open: boolean) => void;
   setDraggingFieldType: (type: FieldType | null) => void;
@@ -81,11 +83,15 @@ export const useUIStore = create<UIStore>()(
       toggleSidebar: () =>
         set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 
+      setSidebarOpen: (open) => set({ sidebarOpen: open }),
+
       togglePropertiesPanel: () =>
         set((state) => ({ propertiesPanelOpen: !state.propertiesPanelOpen })),
 
       toggleCodePreview: () =>
         set((state) => ({ codePreviewOpen: !state.codePreviewOpen })),
+
+      setCodePreviewOpen: (open) => set({ codePreviewOpen: open }),
 
       openExportDialog: (open) => set({ exportDialogOpen: open }),
 
