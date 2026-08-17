@@ -11,7 +11,7 @@ export function FieldPalette() {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-muted-foreground">
-        Drag a field type onto a table to add it.
+        Drag a field type onto a table or canva to add it.
       </p>
       <div className="grid grid-cols-2 gap-1.5">
         {types.map((type) => (
