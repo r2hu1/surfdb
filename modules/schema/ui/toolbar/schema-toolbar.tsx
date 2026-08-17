@@ -47,22 +47,6 @@ export function SchemaToolbar() {
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-background px-3">
-      <TooltipProvider delayDuration={200}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              onClick={toggleSidebar}
-              aria-label="Toggle sidebar"
-            >
-              <PanelLeft className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Toggle sidebar</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-
       <div className="ml-1 flex items-center gap-2">
         <span className="flex size-6 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <Database className="size-3.5" />
