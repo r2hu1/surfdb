@@ -1,4 +1,4 @@
-import { KeyRound, Trash2 } from "lucide-react";
+import { KeyRound, Link2, Trash2, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,13 +22,35 @@ interface FieldEditorProps {
 }
 
 export function FieldEditor({ tableId, field }: FieldEditorProps) {
+  const project = useSchemaStore((s) => s.project);
   const dialect = useSchemaStore((s) => s.project.dialect);
   const updateField = useSchemaStore((s) => s.updateField);
   const deleteField = useSchemaStore((s) => s.deleteField);
+  const addRelation = useSchemaStore((s) => s.addRelation);
+  const deleteRelation = useSchemaStore((s) => s.deleteRelation);
   const select = useUIStore((s) => s.select);
   const types = getFieldTypesForDialect(dialect);
 
   const patch = (p: Partial<Field>) => updateField(tableId, field.id, p);
+
+  const outboundRelation = project.relations.find(
+    (r) => r.sourceFieldId === field.id,
+  );
+
+  const linkTargets = project.tables.flatMap((t) =>
+    t.fields
+      .filter(
+        (f) =>
+          f.id !== field.id &&
+          (f.primaryKey || f.unique) &&
+          f.type === field.type,
+      )
+      .map((f) => ({
+        tableId: t.id,
+        fieldId: f.id,
+        label: `${t.name}.${f.name}`,
+      })),
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -158,6 +180,72 @@ export function FieldEditor({ tableId, field }: FieldEditorProps) {
           value={field.comment ?? ""}
           onChange={(e) => patch({ comment: e.target.value || undefined })}
         />
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card p-3">
+        <div className="flex items-center gap-1.5 text-sm font-medium">
+          <Link2 className="size-3.5 text-primary" />
+          Link to field
+        </div>
+        {outboundRelation ? (
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-xs text-muted-foreground">
+              {linkTargets.find(
+                (t) => t.fieldId === outboundRelation.targetFieldId,
+              )?.label ?? `linked → ${outboundRelation.targetFieldId}`}
+            </span>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => deleteRelation(outboundRelation.id)}
+              aria-label="Unlink field"
+            >
+              <Unlink className="size-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <>
+            <Select
+              value=""
+              onValueChange={(v) => {
+                const [targetTableId, targetFieldId] = v.split("::");
+                addRelation({
+                  type:
+                    targetTableId === tableId ? "one_to_one" : "one_to_many",
+                  sourceTableId: tableId,
+                  sourceFieldId: field.id,
+                  targetTableId,
+                  targetFieldId,
+                  onDelete: "cascade",
+                });
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Choose target field" />
+              </SelectTrigger>
+              <SelectContent>
+                {linkTargets.length === 0 && (
+                  <SelectItem value="__none__" disabled>
+                    No compatible targets (same type, PK/unique)
+                  </SelectItem>
+                )}
+                {linkTargets.map((t) => (
+                  <SelectItem
+                    key={`${t.tableId}::${t.fieldId}`}
+                    value={`${t.tableId}::${t.fieldId}`}
+                  >
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">
+              Creates a FK — target must share this field's type and be primary
+              key or unique.
+            </p>
+          </>
+        )}
       </div>
 
       <div className="flex flex-col gap-2.5">
