@@ -88,8 +88,8 @@ export function SchemaCanvas() {
         onPaneClick={() => select("table", null)}
         deleteKeyCode={null}
         fitView
-        fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
-        colorMode="system"
+        fitViewOptions={{ padding: 0, maxZoom: 1 }}
+        colorMode="light"
         defaultEdgeOptions={{
           markerEnd: { type: MarkerType.ArrowClosed, color: "var(--border)" },
         }}
