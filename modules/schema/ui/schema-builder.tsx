@@ -1,16 +1,16 @@
 "use client";
 
 import { ReactFlowProvider } from "@xyflow/react";
+import { PanelLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useKeyboard } from "../hooks/use-keyboard";
+import { useSchemaStore } from "../store/schema.store";
 import { useUIStore } from "../store/ui.store";
 import { SchemaCanvas } from "./canvas/schema-canvas";
 import { PropertiesPanel } from "./panels/properties-panel";
 import { CodePreview } from "./preview/code-preview";
 import { SchemaSidebar } from "./sidebar/sidebar";
 import { SchemaToolbar } from "./toolbar/schema-toolbar";
-import { Button } from "@/components/ui/button";
-import { PanelLeft } from "lucide-react";
-import { useSchemaStore } from "../store/schema.store";
 
 export function SchemaBuilder() {
   useKeyboard();
