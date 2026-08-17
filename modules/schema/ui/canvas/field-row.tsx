@@ -108,7 +108,6 @@ export function FieldRow({ tableId, field }: FieldRowProps) {
         {isConnectSource && (
           <span className="flex items-center gap-0.5 text-[10px] font-semibold text-primary">
             <Link2 className="size-3" />
-            linking…
           </span>
         )}
         {!field.nullable && (
