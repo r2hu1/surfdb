@@ -57,7 +57,7 @@ export function ImportDialog() {
         if (!v) clearError();
       }}
     >
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl!">
         <DialogHeader>
           <DialogTitle>Import schema</DialogTitle>
           <DialogDescription>
@@ -113,7 +113,7 @@ export function ImportDialog() {
                   ? '{\n  "name": "My Project",\n  "tables": []\n}'
                   : "Paste schema code here…"
               }
-              className="h-44 resize-none font-mono text-xs"
+              className="h-55 resize-none font-mono text-xs"
             />
           ) : (
             <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-background px-4 py-8 text-center transition-colors hover:bg-muted">
