@@ -7,7 +7,6 @@ import { type AdapterKey, adapters } from "../../adapters";
 import { useExport } from "../../hooks/use-export";
 import { useSchemaStore } from "../../store/schema.store";
 import { useUIStore } from "../../store/ui.store";
-import { CopyButton } from "./copy-button";
 import { SyntaxHighlight } from "./syntax-highlight";
 
 export function CodePreview() {
@@ -20,7 +19,7 @@ export function CodePreview() {
   if (!open) return null;
 
   return (
-    <div className="flex h-64 shrink-0 flex-col border-t border-border bg-background">
+    <div className="flex h-full shrink-0 flex-col bg-background">
       <Tabs
         value={tab}
         onValueChange={(v) => setTab(v as AdapterKey)}
@@ -35,7 +34,6 @@ export function CodePreview() {
             ))}
           </TabsList>
           <div className="flex-1" />
-          <CopyButton text={code} />
           <Button
             size="icon-sm"
             variant="ghost"
@@ -60,7 +58,11 @@ export function CodePreview() {
             </div>
           ) : (
             <ScrollArea className="h-full">
-              <SyntaxHighlight code={code} language={adapters[tab].language} />
+              <SyntaxHighlight
+                code={code}
+                language={adapters[tab].language}
+                filename={`${project.name}.${adapters[tab].extension}`}
+              />
             </ScrollArea>
           )}
         </TabsContent>
