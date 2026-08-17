@@ -1,4 +1,4 @@
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSchemaStore } from "../../store/schema.store";
 import { useUIStore } from "../../store/ui.store";
@@ -106,7 +106,7 @@ export function SchemaSidebar() {
               </TabsTrigger>
             </TabsList>
           </div>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 max-h-145">
             <TabsContent value="palette" className="px-3 py-3">
               <FieldPalette />
             </TabsContent>
