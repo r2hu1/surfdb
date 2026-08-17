@@ -1,0 +1,25 @@
+.code-block .shiki {
+  margin: 0;
+  padding: 0.875rem 1rem;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+  line-height: 1.6;
+  /* biome-ignore lint/complexity/noImportantStyles: shiki sets an inline background on pre that must not override the block container */
+  background: transparent !important;
+}
+
+.code-block .shiki code {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.code-block .shiki::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.code-block .shiki::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
