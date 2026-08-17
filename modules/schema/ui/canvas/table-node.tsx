@@ -43,12 +43,12 @@ export const TableNode = memo(function TableNode({
         select("table", table.id);
       }}
       className={cn(
-        "w-60 rounded-[min(var(--radius-4xl),24px)] bg-card text-sm text-card-foreground shadow-sm ring-1 ring-foreground/5 transition-shadow dark:ring-foreground/10",
+        "w-60 rounded-lg bg-card text-sm text-card-foreground shadow-sm ring-1 ring-foreground/5 transition-shadow dark:ring-foreground/10",
         selected && "ring-2 ring-primary",
         isOver && "ring-2 ring-primary ring-offset-2",
       )}
     >
-      <div className="relative overflow-hidden rounded-[min(var(--radius-4xl),24px)]">
+      <div className="relative overflow-hidden rounded-lg">
         <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
           <Table2 className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="min-w-0 flex-1 truncate font-heading text-sm font-medium">
