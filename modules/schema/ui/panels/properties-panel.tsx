@@ -54,12 +54,12 @@ export function PropertiesPanel() {
   }
 
   return (
-    <aside className="flex h-full shrink-0 flex-col bg-background">
+    <aside className="flex h-full shrink-0 flex-col bg-background border-l w-80!">
       <div className="flex items-center justify-between px-4 py-3">
         <h2 className="font-heading text-sm font-medium">{title}</h2>
         <Button
           size="icon-sm"
-          variant="ghost"
+          variant="secondary"
           className="text-muted-foreground"
           onClick={() => {
             togglePropertiesPanel();
