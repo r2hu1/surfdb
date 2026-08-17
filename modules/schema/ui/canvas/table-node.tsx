@@ -8,6 +8,7 @@ import { useDropField } from "../../hooks/use-drag-palette";
 import { useSchemaStore } from "../../store/schema.store";
 import { useUIStore } from "../../store/ui.store";
 import { FieldRow } from "./field-row";
+import { Button } from "@/components/ui/button";
 
 export type TableNode = Node<TableNodeData, "table">;
 
@@ -78,8 +79,11 @@ export const TableNode = memo(function TableNode({
         </div>
 
         <div className="border-t border-border/60 p-1.5">
-          <button
+          <Button
             type="button"
+            size="sm"
+            className="w-full rounded-md"
+            variant="secondary"
             onClick={(e) => {
               e.stopPropagation();
               addFieldToTable(
@@ -88,11 +92,10 @@ export const TableNode = memo(function TableNode({
                 defaultType,
               );
             }}
-            className="flex w-full items-center justify-center gap-1 rounded-xl py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <Plus className="size-3" />
             Add field
-          </button>
+          </Button>
         </div>
 
         {isOver && (
