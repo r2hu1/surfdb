@@ -74,9 +74,6 @@ export function PropertiesPanel() {
       <ScrollArea className="flex-1 h-130">
         <div className="px-4 pb-6">{content}</div>
       </ScrollArea>
-      <div className="p-2">
-        <ModeToggle />
-      </div>
     </aside>
   );
 }

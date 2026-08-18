@@ -1,10 +1,12 @@
 import {
   Database,
   Download,
+  Moon,
   SidebarLeft as PanelLeft,
   Plus,
   Redo3 as Redo2,
   Setting2,
+  Sun2,
   Undo3 as Undo2,
   Upload,
 } from "reicon-react";
@@ -32,6 +34,7 @@ import { ImportDialog } from "../toolbar/import-dialog";
 import { FieldPalette } from "./field-palette";
 import { TableList } from "./table-list";
 import { TypeReference } from "./type-reference";
+import { useTheme } from "next-themes";
 
 export function SchemaSidebar() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
@@ -50,6 +53,7 @@ export function SchemaSidebar() {
   } = useUIStore();
   const undo = () => useSchemaStore.temporal.getState().undo();
   const redo = () => useSchemaStore.temporal.getState().redo();
+  const { resolvedTheme, setTheme } = useTheme();
 
   if (!sidebarOpen) return null;
 
@@ -143,8 +147,14 @@ export function SchemaSidebar() {
               ))}
             </SelectContent>
           </Select>
-          <Button size="icon" onClick={openSettings} variant="secondary">
-            <Setting2 />
+          <Button
+            size="icon"
+            onClick={() =>
+              setTheme(resolvedTheme === "dark" ? "light" : "dark")
+            }
+            variant="secondary"
+          >
+            {resolvedTheme === "dark" ? <Sun2 /> : <Moon />}
           </Button>
         </div>
         <div className="flex items-center justify-between">
