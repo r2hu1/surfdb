@@ -1,5 +1,5 @@
 import { buttonVariants } from "@/components/ui/button";
-import { ArrowUpRight, Boxes, Star } from "lucide-react";
+import { ArrowUpRight, Box2Newicons as Boxes, Star } from "reicon-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";

@@ -1,4 +1,9 @@
-import { ListPlus, Plus, Table2, Trash2 } from "lucide-react";
+import {
+  WidgetAdd as ListPlus,
+  Plus,
+  Grid4 as Table2,
+  Trash2,
+} from "reicon-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

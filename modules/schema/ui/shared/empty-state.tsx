@@ -1,4 +1,4 @@
-import { Database, Sparkles } from "lucide-react";
+import { Database, Sparkles } from "reicon-react";
 import { Button } from "@/components/ui/button";
 import { useSchemaStore } from "../../store/schema.store";
 import { useUIStore } from "../../store/ui.store";
@@ -8,6 +8,7 @@ export function EmptyState() {
   const addTableWithName = useSchemaStore((s) => s.addTableWithName);
   const loadProject = useSchemaStore((s) => s.loadProject);
   const openImport = useUIStore((s) => s.openImportDialog);
+  const openSettings = useUIStore((s) => s.openSettings);
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
@@ -22,25 +23,13 @@ export function EmptyState() {
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => addTableWithName("users", { x: 40, y: 40 })}
-          >
-            <Database className="size-3.5" />
+          <Button onClick={() => addTableWithName("users", { x: 40, y: 40 })}>
             New table
+            <Database className="size-3.5" />
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              if (templates[0]) loadProject(templates[0].build());
-            }}
-          >
-            <Sparkles className="size-3.5" />
+          <Button variant="outline" onClick={openSettings}>
             Use template
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => openImport(true)}>
-            Import
+            <Sparkles className="size-3.5" />
           </Button>
         </div>
       </div>

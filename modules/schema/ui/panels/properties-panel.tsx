@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X } from "reicon-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Field, Table } from "../../domain";
@@ -60,7 +60,7 @@ export function PropertiesPanel() {
         <Button
           size="icon-sm"
           variant="secondary"
-          className="text-muted-foreground"
+          className="size-6"
           onClick={() => {
             togglePropertiesPanel();
             select("table", null);

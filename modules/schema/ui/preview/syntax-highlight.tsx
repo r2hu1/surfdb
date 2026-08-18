@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, FileCode2 } from "lucide-react";
+import { Check, Copy, Code as FileCode2 } from "reicon-react";
 import { useEffect, useState } from "react";
 import { codeToHtml } from "shiki";
 import { Button } from "@/components/ui/button";

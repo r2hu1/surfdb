@@ -1,4 +1,4 @@
-import { ChevronRight, Table2 } from "lucide-react";
+import { ChevronRight, Grid4 as Table2 } from "reicon-react";
 import { cn } from "@/lib/utils";
 import type { Table } from "../../domain";
 import { useSchemaStore } from "../../store/schema.store";

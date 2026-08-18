@@ -1,4 +1,9 @@
-import { KeyRound, Link2, Trash2, Unlink } from "lucide-react";
+import {
+  Key2 as KeyRound,
+  Link2,
+  Trash2,
+  LinkBroken2 as Unlink,
+} from "reicon-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

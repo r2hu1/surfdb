@@ -1,4 +1,4 @@
-import { Download, X } from "lucide-react";
+import { Download, X } from "reicon-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";

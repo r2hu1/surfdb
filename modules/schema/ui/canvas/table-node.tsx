@@ -1,5 +1,5 @@
 import type { Node, NodeProps } from "@xyflow/react";
-import { Plus, Table2, Trash2 } from "lucide-react";
+import { Plus, Grid4 as Table2, Trash2 } from "reicon-react";
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

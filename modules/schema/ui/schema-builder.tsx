@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactFlowProvider } from "@xyflow/react";
-import { PanelLeft } from "lucide-react";
+import { SidebarRight as PanelLeft } from "reicon-react";
 import { Button } from "@/components/ui/button";
 import { useKeyboard } from "../hooks/use-keyboard";
 import { useSchemaStore } from "../store/schema.store";

@@ -1,12 +1,12 @@
 import {
   Database,
   Download,
-  PanelLeft,
+  SidebarLeft as PanelLeft,
   Plus,
-  Redo2,
-  Undo2,
+  Redo3 as Redo2,
+  Undo3 as Undo2,
   Upload,
-} from "lucide-react";
+} from "reicon-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {

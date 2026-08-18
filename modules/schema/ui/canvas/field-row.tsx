@@ -1,5 +1,5 @@
 import { Handle, Position } from "@xyflow/react";
-import { KeyRound, Link2 } from "lucide-react";
+import { Key as KeyRound, Link2 } from "reicon-react";
 import { cn } from "@/lib/utils";
 import { getFieldTypeConfig } from "../../config/field-types";
 import type { Field } from "../../domain";

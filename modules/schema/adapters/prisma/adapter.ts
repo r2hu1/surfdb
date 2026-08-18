@@ -1,6 +1,6 @@
-import type { Field, SchemaProject, Table } from "../../domain";
-import type { SchemaAdapter } from "../adapter.interface";
+import type { Field, Relation, SchemaProject, Table } from "../../domain";
 import { normalizeRelationDirection } from "../../domain/services/schema.service";
+import type { SchemaAdapter } from "../adapter.interface";
 import { importPrismaSchema } from "./import";
 
 const PRISMA_TYPE: Record<string, string> = {
@@ -41,6 +41,33 @@ const MONGODB_FIELD_MAP: Record<string, string> = {
   binary: "Bytes",
 };
 
+const ON_DELETE_MAP: Record<string, string> = {
+  cascade: "Cascade",
+  set_null: "SetNull",
+  set_default: "SetDefault",
+  restrict: "Restrict",
+  no_action: "NoAction",
+};
+
+interface RelationEntry {
+  relation: Relation;
+  sourceTable: Table;
+  sourceField: Field;
+  targetTable: Table;
+  targetField: Field;
+}
+
+interface RelationFieldInfo {
+  fieldName: string;
+  modelName: string;
+  isArray: boolean;
+  scalarFieldName: string;
+  targetFieldName: string;
+  onDelete: string;
+  explicitRelationName?: string;
+  relationId?: string;
+}
+
 function modelName(name: string): string {
   const pascal = name
     .split(/[^A-Za-z0-9]/)
@@ -55,22 +82,94 @@ function prismaScalar(f: Field, relationless: boolean): string {
   return map[f.type] ?? "String";
 }
 
-function enumName(model: string, field: Field): string {
-  return `${model}${field.name.charAt(0).toUpperCase() + field.name.slice(1)}`;
+function onDeleteSyntax(value?: string): string {
+  if (!value) return "NoAction";
+  return ON_DELETE_MAP[value] ?? "NoAction";
+}
+
+function sanitizeEnumValue(value: string): string {
+  let identifier = value
+    .replace(/[^a-zA-Z0-9_]/g, "_")
+    .replace(/^(\d)/, "_$1")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
+  if (!identifier) identifier = `val_${Math.random().toString(36).slice(2, 6)}`;
+  identifier = identifier.charAt(0).toLowerCase() + identifier.slice(1);
+  return identifier;
+}
+
+function singularize(name: string): string {
+  if (name.endsWith("ies")) return `${name.slice(0, -3)}y`;
+  if (name.endsWith("ses")) return `${name.slice(0, -2)}`;
+  if (name.endsWith("s") && !name.endsWith("ss")) return name.slice(0, -1);
+  return name;
+}
+
+function relationFieldName(
+  fkFieldName: string,
+  targetModelName: string,
+): string {
+  if (fkFieldName.endsWith("_id")) {
+    const base = fkFieldName.slice(0, -3);
+    return base.charAt(0).toLowerCase() + base.slice(1);
+  }
+  const singular = singularize(targetModelName);
+  return singular.charAt(0).toLowerCase() + singular.slice(1);
+}
+
+function arrayFieldName(sourceModelName: string): string {
+  return sourceModelName.charAt(0).toLowerCase() + sourceModelName.slice(1);
+}
+
+function junctionUniqueConstraint(
+  table: Table,
+  relations: Relation[],
+): string | null {
+  const fkFields = table.fields.filter(
+    (f) =>
+      !f.primaryKey &&
+      relations.some(
+        (r) => r.sourceFieldId === f.id && r.sourceTableId === table.id,
+      ),
+  );
+  if (fkFields.length !== 2) return null;
+  const targets = new Set(
+    relations
+      .filter(
+        (r) =>
+          r.sourceTableId === table.id &&
+          fkFields.some((f) => f.id === r.sourceFieldId),
+      )
+      .map((r) => r.targetTableId),
+  );
+  if (targets.size !== 2) return null;
+  return `  @@unique([${fkFields[0].name}, ${fkFields[1].name}])`;
 }
 
 function enumDefs(table: Table, model: string): string[] {
   return table.fields
     .filter((f) => f.type === "enum" && f.enumValues?.length)
-    .map(
-      (f) =>
-        `enum ${enumName(model, f)} {\n${f.enumValues?.map((v) => `  ${v}`).join("\n")}\n}`,
-    );
+    .map((f) => {
+      const enumIdent = `${model}${f.name.charAt(0).toUpperCase() + f.name.slice(1)}`;
+      const values = (f.enumValues ?? []).map((v) => {
+        const ident = sanitizeEnumValue(v);
+        if (ident === v) return `  ${ident}`;
+        return `  ${ident} @map("${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}")`;
+      });
+      return `enum ${enumIdent} {\n${values.join("\n")}\n}`;
+    });
 }
 
-function defaultAttr(field: Field, relationless: boolean): string {
+function defaultAttr(
+  field: Field,
+  isFK: boolean,
+  relationless: boolean,
+): string {
+  if (field.primaryKey && field.type === "uuid" && !relationless)
+    return "@default(uuid())";
   if (field.autoIncrement) return "@default(autoincrement())";
-  if (field.type === "uuid" && !relationless) return "@default(uuid())";
+  if (field.type === "uuid" && !relationless && !isFK)
+    return "@default(uuid())";
   if (field.defaultValue) {
     const v = field.defaultValue.trim();
     if (
@@ -89,81 +188,198 @@ function defaultAttr(field: Field, relationless: boolean): string {
   return "";
 }
 
-function fieldLine(field: Field, model: string, relationless: boolean): string {
+function fieldLine(
+  field: Field,
+  model: string,
+  isFK: boolean,
+  relationless: boolean,
+): string {
   const type =
     field.type === "enum" && field.enumValues?.length
-      ? enumName(model, field)
+      ? `${model}${field.name.charAt(0).toUpperCase() + field.name.slice(1)}`
       : prismaScalar(field, relationless);
   const arraySuffix = field.isArray ? "[]" : "";
   let line = `  ${field.name} ${type}${arraySuffix}`;
   if (field.primaryKey) line += " @id";
-  if (field.unique) line += " @unique";
-  const dflt = defaultAttr(field, relationless);
+  if (field.unique && !field.primaryKey) line += " @unique";
+  const dflt = defaultAttr(field, isFK, relationless);
   if (dflt) line += ` ${dflt}`;
   if (field.comment) line += ` /// ${field.comment.replaceAll("\n", " ")}`;
   return line;
 }
 
-function renderModel(table: Table, project: SchemaProject): string {
+function buildRelationGraph(project: SchemaProject): {
+  entries: RelationEntry[];
+  scalarFieldMap: Map<string, string>;
+  relationFieldsForTable: Map<string, RelationFieldInfo[]>;
+} {
+  const entries: RelationEntry[] = [];
+  const scalarFieldMap = new Map<string, string>();
+  const relationFieldsForTable = new Map<string, RelationFieldInfo[]>();
+
+  for (const rel of project.relations) {
+    const sourceTable = project.tables.find((t) => t.id === rel.sourceTableId);
+    const targetTable = project.tables.find((t) => t.id === rel.targetTableId);
+    if (!sourceTable || !targetTable) continue;
+    const sourceField = sourceTable.fields.find(
+      (f) => f.id === rel.sourceFieldId,
+    );
+    const targetField = targetTable.fields.find(
+      (f) => f.id === rel.targetFieldId,
+    );
+    if (!sourceField || !targetField) continue;
+    entries.push({
+      relation: rel,
+      sourceTable,
+      sourceField,
+      targetTable,
+      targetField,
+    });
+  }
+
+  const pairSeenCount = new Map<string, number>();
+
+  for (const entry of entries) {
+    const {
+      relation: rel,
+      sourceTable,
+      sourceField,
+      targetTable,
+      targetField,
+    } = entry;
+    const sourceModel = modelName(sourceTable.name);
+    const targetModel = modelName(targetTable.name);
+    const onDelete = onDeleteSyntax(rel.onDelete);
+    const fkFieldName = relationFieldName(sourceField.name, targetModel);
+
+    const pairKey = `${sourceTable.id}:${targetTable.id}`;
+    const samePairCount = entries.filter(
+      (e) =>
+        e.sourceTable.id === sourceTable.id &&
+        e.targetTable.id === targetTable.id,
+    ).length;
+    let explicitName: string | undefined;
+    if (samePairCount > 1) {
+      const idx = (pairSeenCount.get(pairKey) ?? 0) + 1;
+      pairSeenCount.set(pairKey, idx);
+      if (rel.type === "one_to_one") {
+        explicitName = `${targetModel.toLowerCase()}${singularize(targetModel)}${idx > 1 ? idx : ""}`;
+      } else {
+        explicitName = `${targetModel.toLowerCase()}${singularize(targetModel)}${idx > 1 ? idx : ""}`;
+      }
+    }
+
+    if (rel.type === "one_to_one") {
+      scalarFieldMap.set(
+        `${sourceTable.id}:${sourceField.id}`,
+        sourceField.name,
+      );
+      const srcFields = relationFieldsForTable.get(sourceTable.id) ?? [];
+      srcFields.push({
+        fieldName: fkFieldName,
+        modelName: targetModel,
+        isArray: false,
+        scalarFieldName: sourceField.name,
+        targetFieldName: targetField.name,
+        onDelete,
+        explicitRelationName: explicitName,
+        relationId: rel.id,
+      });
+      relationFieldsForTable.set(sourceTable.id, srcFields);
+
+      const inverseFieldName = singularize(sourceModel.toLowerCase());
+      const tgtFields = relationFieldsForTable.get(targetTable.id) ?? [];
+      tgtFields.push({
+        fieldName: inverseFieldName,
+        modelName: sourceModel,
+        isArray: false,
+        scalarFieldName: targetField.name,
+        targetFieldName: sourceField.name,
+        onDelete,
+        explicitRelationName: explicitName,
+        relationId: rel.id,
+      });
+      relationFieldsForTable.set(targetTable.id, tgtFields);
+    } else {
+      scalarFieldMap.set(
+        `${sourceTable.id}:${sourceField.id}`,
+        sourceField.name,
+      );
+      const pkFieldName = arrayFieldName(sourceModel);
+
+      const srcFields = relationFieldsForTable.get(sourceTable.id) ?? [];
+      srcFields.push({
+        fieldName: fkFieldName,
+        modelName: targetModel,
+        isArray: false,
+        scalarFieldName: sourceField.name,
+        targetFieldName: targetField.name,
+        onDelete,
+        explicitRelationName: explicitName,
+        relationId: rel.id,
+      });
+      relationFieldsForTable.set(sourceTable.id, srcFields);
+
+      const tgtFields = relationFieldsForTable.get(targetTable.id) ?? [];
+      tgtFields.push({
+        fieldName: pkFieldName,
+        modelName: sourceModel,
+        isArray: true,
+        scalarFieldName: targetField.name,
+        targetFieldName: sourceField.name,
+        onDelete,
+        explicitRelationName: explicitName,
+        relationId: rel.id,
+      });
+      relationFieldsForTable.set(targetTable.id, tgtFields);
+    }
+  }
+
+  for (const tableId of relationFieldsForTable.keys()) {
+    const fields = relationFieldsForTable.get(tableId) ?? [];
+    const seen = new Map<string, number>();
+    for (const f of fields) {
+      const count = (seen.get(f.fieldName) ?? 0) + 1;
+      seen.set(f.fieldName, count);
+      if (count > 1) {
+        f.fieldName = `${f.fieldName}${count}`;
+      }
+    }
+  }
+
+  return { entries, scalarFieldMap, relationFieldsForTable };
+}
+
+function renderRelationField(info: RelationFieldInfo): string {
+  const relParts: string[] = [];
+  if (info.explicitRelationName)
+    relParts.push(`"${info.explicitRelationName}"`);
+  relParts.push(`fields: [${info.scalarFieldName}]`);
+  relParts.push(`references: [${info.targetFieldName}]`);
+  relParts.push(`onDelete: ${info.onDelete}`);
+  return `  ${info.fieldName} ${info.modelName}${info.isArray ? "[]" : ""} @relation(${relParts.join(", ")})`;
+}
+
+function renderModel(
+  table: Table,
+  project: SchemaProject,
+  graph: ReturnType<typeof buildRelationGraph>,
+): string {
   const model = modelName(table.name);
   const relationless = project.dialect === "mongodb";
 
   const body: string[] = [];
   for (const field of table.fields) {
-    body.push(fieldLine(field, model, relationless));
+    const isFK = graph.scalarFieldMap.has(`${table.id}:${field.id}`);
+    body.push(fieldLine(field, model, isFK, relationless));
   }
 
   if (!relationless) {
-    for (const rel of project.relations) {
-      const otherTable = project.tables.find(
-        (t) =>
-          t.id ===
-          (rel.sourceTableId === table.id
-            ? rel.targetTableId
-            : rel.sourceTableId),
-      );
-      if (!otherTable) continue;
-      const otherModel = modelName(otherTable.name);
-      const localField = table.fields.find(
-        (f) =>
-          f.id ===
-          (rel.sourceTableId === table.id
-            ? rel.sourceFieldId
-            : rel.targetFieldId),
-      );
-      const otherField = otherTable.fields.find(
-        (f) =>
-          f.id ===
-          (rel.sourceTableId === table.id
-            ? rel.targetFieldId
-            : rel.sourceFieldId),
-      );
-      if (!localField || !otherField) continue;
-      const relName = rel.name ?? `${model}To${otherModel}`;
-      const isOneSide =
-        rel.type === "one_to_many" && rel.sourceTableId === table.id;
-      const isOneToOneSource =
-        rel.type === "one_to_one" && rel.sourceTableId === table.id;
-
-      if (isOneSide) {
-        body.push(`  ${otherField.name} ${otherModel}[]`);
-      } else if (
-        rel.type === "one_to_many" &&
-        rel.sourceTableId === otherTable.id
-      ) {
-        body.push(
-          `  ${localField.name} ${model}? @relation("${relName}", fields: [${localField.name}], references: [${otherField.name}], onDelete: ${rel.onDelete ? rel.onDelete.replaceAll("_", "") : "NoAction"})`,
-        );
-      } else if (rel.type === "one_to_one" && isOneToOneSource) {
-        body.push(`  ${otherModel.toLowerCase()} ${otherModel}?`);
-      } else if (
-        rel.type === "one_to_one" &&
-        rel.sourceTableId === otherTable.id
-      ) {
-        body.push(
-          `  ${localField.name} ${model}? @relation("${relName}", fields: [${localField.name}], references: [${otherField.name}], onDelete: ${rel.onDelete ? rel.onDelete.replaceAll("_", "") : "NoAction"})`,
-        );
-      }
+    const relFields = graph.relationFieldsForTable.get(table.id) ?? [];
+    const renderedNames = new Set(body.map((l) => l.split(/\s/)[1]));
+    for (const info of relFields) {
+      if (renderedNames.has(info.fieldName)) continue;
+      body.push(renderRelationField(info));
     }
 
     for (const idx of table.indexes) {
@@ -176,6 +392,11 @@ function renderModel(table: Table, project: SchemaProject): string {
       } else {
         body.push(`  @@index([${cols.join(", ")}], name: "${idx.name}")`);
       }
+    }
+
+    if (!relationless) {
+      const constraint = junctionUniqueConstraint(table, project.relations);
+      if (constraint) body.push(constraint);
     }
   }
 
@@ -215,10 +436,11 @@ export const prismaAdapter: SchemaAdapter = {
     ].join("\n");
 
     const normalized = normalizeRelationDirection(project);
-    const models = project.tables
-      .map((table) => renderModel(table, normalized))
+    const graph = buildRelationGraph(normalized);
+    const models = normalized.tables
+      .map((table) => renderModel(table, normalized, graph))
       .join("\n\n");
-    return `${header + models}\n`;
+    return `${header}${models}\n`;
   },
 
   import(code: string): SchemaProject {

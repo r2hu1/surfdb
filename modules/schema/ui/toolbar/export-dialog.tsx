@@ -1,4 +1,4 @@
-import { Check, Copy, Download } from "lucide-react";
+import { Check, Copy, Download } from "reicon-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {

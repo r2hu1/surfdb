@@ -9,7 +9,7 @@ import {
   ReactFlow,
   useReactFlow,
 } from "@xyflow/react";
-import { MousePointer2, X } from "lucide-react";
+import { Pointer as MousePointer2, X } from "reicon-react";
 import "@xyflow/react/dist/style.css";
 import "./react-flow.css";
 import type { FieldType } from "../../config/field-types";
