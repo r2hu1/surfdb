@@ -200,6 +200,7 @@ function fieldDefinition(
   config: DrizzleConfig,
   f: Field,
   enumJsName?: string,
+  isFK = false,
 ): string {
   const isEnumPg = f.type === "enum" && config.core === "drizzle-orm/pg-core";
   const base =
@@ -214,15 +215,19 @@ function fieldDefinition(
       : "";
   let out = `  ${f.name}: ${formatOptions(base)}${arraySuffix}`;
   if (f.primaryKey) {
-    const dflt = config.defaultFn(f);
-    if (dflt) out += dflt;
+    if (!isFK) {
+      const dflt = config.defaultFn(f);
+      if (dflt) out += dflt;
+    }
     out += ".primaryKey()";
     if (!f.nullable) out += ".notNull()";
   } else {
     if (!f.nullable) out += ".notNull()";
     if (f.unique) out += ".unique()";
-    const dflt = config.defaultFn(f);
-    if (dflt) out += dflt;
+    if (!isFK) {
+      const dflt = config.defaultFn(f);
+      if (dflt) out += dflt;
+    }
   }
   return out;
 }
@@ -273,7 +278,10 @@ function referenceSuffix(
   if (!targetJs || !targetField) return "";
   const action = relation.onDelete ?? "no_action";
   const ref = `() => ${targetJs}.${targetField.name}`;
-  const onDelete = action !== "no_action" ? `, { onDelete: "${action}" }` : "";
+  const onDelete =
+    action !== "no_action"
+      ? `, { onDelete: "${action.replace(/_/g, " ")}" }`
+      : "";
   return `.references(${ref}${onDelete})`;
 }
 
@@ -288,11 +296,15 @@ function buildTable(
 ): string[] {
   const lines: string[] = [];
   const fields = table.fields.map((f) => {
-    let def = fieldDefinition(config, f, enumJsNameOf(table, f.id));
     const rel = relationRefs.find((r) => r.sourceFieldId === f.id);
+    let def = fieldDefinition(config, f, enumJsNameOf(table, f.id), !!rel);
     if (rel) {
       def = def.replace(/\.primaryKey\(\)$/, "");
-      def += referenceSuffix(rel, jsNameOfTarget, targetFieldOf);
+      const ref = referenceSuffix(rel, jsNameOfTarget, targetFieldOf);
+      if (rel.onDelete === "set_null") {
+        def = def.replace(/\.notNull\(\)/, "");
+      }
+      def += ref;
     }
     return def;
   });
