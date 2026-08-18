@@ -28,6 +28,8 @@ interface UIStore {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   togglePropertiesPanel: () => void;
+  setPropertiesPanelOpen: (open: boolean) => void;
+  openSettings: () => void;
   toggleCodePreview: () => void;
   setCodePreviewOpen: (open: boolean) => void;
   openExportDialog: (open: boolean) => void;
@@ -87,6 +89,17 @@ export const useUIStore = create<UIStore>()(
 
       togglePropertiesPanel: () =>
         set((state) => ({ propertiesPanelOpen: !state.propertiesPanelOpen })),
+
+      setPropertiesPanelOpen: (open) => set({ propertiesPanelOpen: open }),
+
+      openSettings: () =>
+        set({
+          selectedTableId: null,
+          selectedFieldId: null,
+          selectedRelationId: null,
+          connectFrom: null,
+          propertiesPanelOpen: true,
+        }),
 
       toggleCodePreview: () =>
         set((state) => ({ codePreviewOpen: !state.codePreviewOpen })),

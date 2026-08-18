@@ -38,6 +38,7 @@ export function SchemaToolbar() {
     toggleSidebar,
     codePreviewOpen,
     toggleCodePreview,
+    openSettings,
     openExportDialog,
     openImportDialog,
   } = useUIStore();
@@ -51,9 +52,14 @@ export function SchemaToolbar() {
         <span className="flex size-6 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <Database className="size-3.5" />
         </span>
-        <span className="max-w-40 truncate font-heading text-sm font-medium">
+        <button
+          type="button"
+          onClick={openSettings}
+          className="max-w-40 truncate rounded-md px-1.5 py-0.5 font-heading text-sm font-medium transition-colors hover:bg-muted"
+          aria-label="Project settings"
+        >
           {project.name}
-        </span>
+        </button>
       </div>
 
       <div className="mx-2 h-5 w-px bg-border" />

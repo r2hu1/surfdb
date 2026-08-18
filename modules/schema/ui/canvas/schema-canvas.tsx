@@ -98,7 +98,7 @@ export function SchemaCanvas() {
         <Background
           variant={BackgroundVariant.Dots}
           gap={24}
-          size={1.5}
+          size={3}
           color="var(--border)"
         />
         <MiniMap
@@ -116,7 +116,7 @@ export function SchemaCanvas() {
 
       {connectFrom && (
         <div className="pointer-events-none absolute inset-x-0 top-4 z-10 flex justify-center">
-          <div className="flex items-center gap-2 rounded-full border border-primary/30 bg-background/95 px-3.5 py-1.5 text-xs shadow-md backdrop-blur">
+          <div className="flex items-center gap-2 rounded-full border bg-background/95 px-3.5 py-1.5 text-xs backdrop-blur">
             <MousePointer2 className="size-3.5 text-primary" />
             <span>
               Click a field in another table to link{" "}

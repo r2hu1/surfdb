@@ -22,6 +22,7 @@ export function SchemaBuilder() {
     toggleCodePreview,
     openExportDialog,
     openImportDialog,
+    openSettings,
   } = useUIStore();
   const project = useSchemaStore((s) => s.project);
 
@@ -33,7 +34,7 @@ export function SchemaBuilder() {
           {sidebarOpen ? (
             <SchemaSidebar />
           ) : (
-            <div className="bg-background fixed top-0 left-0 z-100 pr-3 h-fit w-fit m-4 border rounded-xl flex items-center">
+            <div className="bg-background fixed top-0 left-0 z-100 h-fit w-fit m-5 border rounded-xl flex items-center">
               <Button
                 size="icon-sm"
                 variant="ghost"
@@ -42,9 +43,14 @@ export function SchemaBuilder() {
               >
                 <PanelLeft className="size-4" />
               </Button>
-              <span className="max-w-40 truncate font-heading text-sm font-medium">
+              <button
+                className="p-1 text-sm px-2.5 font-medium hover:bg-secondary rounded-lg"
+                type="button"
+                onClick={openSettings}
+                aria-label="Project settings"
+              >
                 {project.name}
-              </span>
+              </button>
             </div>
           )}
           <main className="relative min-w-0 flex-1">

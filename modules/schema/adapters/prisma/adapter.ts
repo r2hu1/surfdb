@@ -1,5 +1,6 @@
 import type { Field, SchemaProject, Table } from "../../domain";
 import type { SchemaAdapter } from "../adapter.interface";
+import { importPrismaSchema } from "./import";
 
 const PRISMA_TYPE: Record<string, string> = {
   string: "String",
@@ -218,7 +219,7 @@ export const prismaAdapter: SchemaAdapter = {
     return `${header + models}\n`;
   },
 
-  import(_code: string): SchemaProject {
-    throw new Error("Prisma import is not supported yet");
+  import(code: string): SchemaProject {
+    return importPrismaSchema(code);
   },
 };

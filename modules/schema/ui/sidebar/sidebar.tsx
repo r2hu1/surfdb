@@ -1,19 +1,3 @@
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSchemaStore } from "../../store/schema.store";
-import { useUIStore } from "../../store/ui.store";
-import { FieldPalette } from "./field-palette";
-import { TableList } from "./table-list";
-import { TypeReference } from "./type-reference";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { DIALECTS } from "../../config/db-dialects";
-import { Button } from "@/components/ui/button";
 import {
   Database,
   Download,
@@ -23,14 +7,30 @@ import {
   Undo2,
   Upload,
 } from "lucide-react";
-import { ExportDialog } from "../toolbar/export-dialog";
-import { ImportDialog } from "../toolbar/import-dialog";
+import { Button } from "@/components/ui/button";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { DIALECTS } from "../../config/db-dialects";
+import { useSchemaStore } from "../../store/schema.store";
+import { useUIStore } from "../../store/ui.store";
+import { ExportDialog } from "../toolbar/export-dialog";
+import { ImportDialog } from "../toolbar/import-dialog";
+import { FieldPalette } from "./field-palette";
+import { TableList } from "./table-list";
+import { TypeReference } from "./type-reference";
 
 export function SchemaSidebar() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
@@ -43,6 +43,7 @@ export function SchemaSidebar() {
     toggleSidebar,
     codePreviewOpen,
     toggleCodePreview,
+    openSettings,
     openExportDialog,
     openImportDialog,
   } = useUIStore();
@@ -70,9 +71,14 @@ export function SchemaSidebar() {
               <TooltipContent>Toggle sidebar</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <span className="max-w-40 truncate font-heading text-sm font-medium">
+          <button
+            type="button"
+            onClick={openSettings}
+            className="max-w-40 truncate rounded-md px-1.5 py-0.5 font-heading text-sm font-medium transition-colors hover:bg-muted"
+            aria-label="Project settings"
+          >
             {project.name}
-          </span>
+          </button>
 
           <Button
             size="sm"

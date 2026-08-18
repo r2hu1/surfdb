@@ -1,6 +1,7 @@
 import type { Node, NodeProps } from "@xyflow/react";
 import { Plus, Table2, Trash2 } from "lucide-react";
 import { memo } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getFieldTypesForDialect } from "../../config/field-types";
 import type { TableNodeData } from "../../hooks/use-canvas-sync";
@@ -8,7 +9,6 @@ import { useDropField } from "../../hooks/use-drag-palette";
 import { useSchemaStore } from "../../store/schema.store";
 import { useUIStore } from "../../store/ui.store";
 import { FieldRow } from "./field-row";
-import { Button } from "@/components/ui/button";
 
 export type TableNode = Node<TableNodeData, "table">;
 
