@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { buttonVariants } from "@/components/ui/button";
-import { ArrowUpRight, Box2Newicons as Boxes, Star } from "reicon-react";
+import {
+  ArrowUpRight,
+  Box2Newicons as Boxes,
+  Database,
+  Star,
+} from "reicon-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -35,7 +40,7 @@ export default function Home() {
 
       <div className="flex max-w-md flex-col items-center gap-5 text-center animate-in fade-in slide-in-from-bottom-3 duration-700">
         <div className="flex size-14 items-center justify-center rounded-2xl border bg-background">
-          <Boxes className="size-6 text-primary" strokeWidth={1.5} />
+          <Database className="size-6 text-primary" strokeWidth={1.5} />
         </div>
 
         <div className="flex flex-col gap-2.5">

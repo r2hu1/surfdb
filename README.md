@@ -2,6 +2,8 @@
 
 Visual database schema designer. Drag tables, connect relations, and export to Drizzle ORM, Prisma, or MongoDB.
 
+![SurfDB preview](public/preview.png)
+
 ## Features
 
 - **Visual canvas** — drag-and-drop table editor powered by React Flow
