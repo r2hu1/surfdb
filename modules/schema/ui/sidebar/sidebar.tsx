@@ -4,6 +4,7 @@ import {
   SidebarLeft as PanelLeft,
   Plus,
   Redo3 as Redo2,
+  Setting2,
   Undo3 as Undo2,
   Upload,
 } from "reicon-react";
@@ -125,26 +126,27 @@ export function SchemaSidebar() {
           </ScrollArea>
         </Tabs>
       </div>
-      <div className="p-3 grid gap-2">
-        <Select
-          value={project.dialect}
-          onValueChange={(v) => setDialect(v as typeof project.dialect)}
-        >
-          <SelectTrigger
-            size="sm"
-            className="w-full"
-            aria-label="Database dialect"
+      <div className="p-3 grid gap-3">
+        <div className="flex items-center gap-2">
+          <Select
+            value={project.dialect}
+            onValueChange={(v) => setDialect(v as typeof project.dialect)}
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {DIALECTS.map((d) => (
-              <SelectItem key={d.id} value={d.id}>
-                {d.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            <SelectTrigger className="w-full" aria-label="Database dialect">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DIALECTS.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button size="icon" onClick={openSettings} variant="secondary">
+            <Setting2 />
+          </Button>
+        </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
             <Button

@@ -14,7 +14,7 @@ interface DrizzleConfig {
   core: DrizzleCore;
   tableFn: string;
   typeMap: Record<string, (f: Field) => string>;
-  defaultFn: (f: Field) => string;
+  defaultFn: (f: Field, isFK: boolean) => string;
 }
 
 const PG: DrizzleConfig = {
@@ -44,9 +44,9 @@ const PG: DrizzleConfig = {
     blob: (f) => `bytea("${f.name}")`,
     enum: (f) => `text("${f.name}")`,
   },
-  defaultFn: (f) => {
+  defaultFn: (f, isFK) => {
     if (f.autoIncrement) return "";
-    if (f.type === "uuid") return ".defaultRandom()";
+    if (f.type === "uuid" && !isFK) return ".defaultRandom()";
     if (f.defaultValue) {
       const v = f.defaultValue;
       if (f.type === "enum" && !/^['"`]/.test(v))
@@ -89,7 +89,7 @@ const MYSQL: DrizzleConfig = {
     enum: (f) =>
       `enum("${f.name}", [${(f.enumValues ?? []).map((v) => `'${v}'`).join(", ")}])`,
   },
-  defaultFn: (f) => {
+  defaultFn: (f, _isFK) => {
     if (f.type === "uuid") return "";
     if (f.autoIncrement) return ".autoIncrement()";
     if (f.defaultValue) {
@@ -126,7 +126,7 @@ const SQLITE: DrizzleConfig = {
     blob: (f) => `blob("${f.name}")`,
     enum: (f) => `text("${f.name}")`,
   },
-  defaultFn: (f) => {
+  defaultFn: (f, _isFK) => {
     if (f.defaultValue) return `.default(${f.defaultValue})`;
     if (f.type === "boolean") return ".default(false)";
     return "";
@@ -216,7 +216,7 @@ function fieldDefinition(
   let out = `  ${f.name}: ${formatOptions(base)}${arraySuffix}`;
   if (f.primaryKey) {
     if (!isFK) {
-      const dflt = config.defaultFn(f);
+      const dflt = config.defaultFn(f, isFK);
       if (dflt) out += dflt;
     }
     out += ".primaryKey()";
@@ -225,7 +225,7 @@ function fieldDefinition(
     if (!f.nullable) out += ".notNull()";
     if (f.unique) out += ".unique()";
     if (!isFK) {
-      const dflt = config.defaultFn(f);
+      const dflt = config.defaultFn(f, isFK);
       if (dflt) out += dflt;
     }
   }
@@ -301,9 +301,6 @@ function buildTable(
     if (rel) {
       def = def.replace(/\.primaryKey\(\)$/, "");
       const ref = referenceSuffix(rel, jsNameOfTarget, targetFieldOf);
-      if (rel.onDelete === "set_null") {
-        def = def.replace(/\.notNull\(\)/, "");
-      }
       def += ref;
     }
     return def;
@@ -382,12 +379,6 @@ export const drizzleAdapter: SchemaAdapter = {
     }
 
     const relations = normalizeRelationDirection(project).relations;
-    const relationMap = new Map<string, Relation[]>();
-    for (const rel of relations) {
-      if (!relationMap.has(rel.sourceTableId))
-        relationMap.set(rel.sourceTableId, []);
-      relationMap.get(rel.sourceTableId)?.push(rel);
-    }
 
     const targetFieldOf = (tableId: string, fieldId: string) =>
       project.tables
@@ -409,7 +400,7 @@ export const drizzleAdapter: SchemaAdapter = {
 
     for (const table of project.tables) {
       const jsName = nameToJs.get(table.name) ?? sanitizeJsName(table.name);
-      const rels = relationMap.get(table.id) ?? [];
+      const rels = relations.filter((r) => r.sourceTableId === table.id);
       const usedSourceFields = new Set<string>();
       const validRels = rels.filter((r) => {
         const sourceField = table.fields.find((f) => f.id === r.sourceFieldId);

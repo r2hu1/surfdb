@@ -61,6 +61,7 @@ interface RelationFieldInfo {
   fieldName: string;
   modelName: string;
   isArray: boolean;
+  nullable: boolean;
   scalarFieldName: string;
   targetFieldName: string;
   onDelete: string;
@@ -121,31 +122,6 @@ function arrayFieldName(sourceModelName: string): string {
   return sourceModelName.charAt(0).toLowerCase() + sourceModelName.slice(1);
 }
 
-function junctionUniqueConstraint(
-  table: Table,
-  relations: Relation[],
-): string | null {
-  const fkFields = table.fields.filter(
-    (f) =>
-      !f.primaryKey &&
-      relations.some(
-        (r) => r.sourceFieldId === f.id && r.sourceTableId === table.id,
-      ),
-  );
-  if (fkFields.length !== 2) return null;
-  const targets = new Set(
-    relations
-      .filter(
-        (r) =>
-          r.sourceTableId === table.id &&
-          fkFields.some((f) => f.id === r.sourceFieldId),
-      )
-      .map((r) => r.targetTableId),
-  );
-  if (targets.size !== 2) return null;
-  return `  @@unique([${fkFields[0].name}, ${fkFields[1].name}])`;
-}
-
 function enumDefs(table: Table, model: string): string[] {
   return table.fields
     .filter((f) => f.type === "enum" && f.enumValues?.length)
@@ -200,6 +176,7 @@ function fieldLine(
       : prismaScalar(field, relationless);
   const arraySuffix = field.isArray ? "[]" : "";
   let line = `  ${field.name} ${type}${arraySuffix}`;
+  if (field.nullable && !field.primaryKey) line += "?";
   if (field.primaryKey) line += " @id";
   if (field.unique && !field.primaryKey) line += " @unique";
   const dflt = defaultAttr(field, isFK, relationless);
@@ -237,8 +214,6 @@ function buildRelationGraph(project: SchemaProject): {
     });
   }
 
-  const pairSeenCount = new Map<string, number>();
-
   for (const entry of entries) {
     const {
       relation: rel,
@@ -252,21 +227,34 @@ function buildRelationGraph(project: SchemaProject): {
     const onDelete = onDeleteSyntax(rel.onDelete);
     const fkFieldName = relationFieldName(sourceField.name, targetModel);
 
-    const pairKey = `${sourceTable.id}:${targetTable.id}`;
-    const samePairCount = entries.filter(
+    let needsExplicitName = false;
+    let pairIndex = 0;
+
+    // same-pair dedup: multiple FKs between same two tables
+    const samePair = entries.filter(
       (e) =>
         e.sourceTable.id === sourceTable.id &&
         e.targetTable.id === targetTable.id,
-    ).length;
-    let explicitName: string | undefined;
-    if (samePairCount > 1) {
-      const idx = (pairSeenCount.get(pairKey) ?? 0) + 1;
-      pairSeenCount.set(pairKey, idx);
-      if (rel.type === "one_to_one") {
-        explicitName = `${targetModel.toLowerCase()}${singularize(targetModel)}${idx > 1 ? idx : ""}`;
-      } else {
-        explicitName = `${targetModel.toLowerCase()}${singularize(targetModel)}${idx > 1 ? idx : ""}`;
+    );
+    if (samePair.length > 1) {
+      needsExplicitName = true;
+      pairIndex = samePair.indexOf(entry) + 1;
+    }
+    // same-target dedup: multiple tables FK into same target
+    if (!needsExplicitName) {
+      const sameTarget = entries.filter(
+        (e) => e.targetTable.id === targetTable.id,
+      );
+      const srcModels = new Set(sameTarget.map((e) => e.sourceTable.id));
+      if (sameTarget.length > 1 && srcModels.size > 1) {
+        needsExplicitName = true;
+        pairIndex = sameTarget.indexOf(entry) + 1;
       }
+    }
+
+    let explicitName: string | undefined;
+    if (needsExplicitName) {
+      explicitName = `${targetModel.toLowerCase()}${singularize(targetModel)}${pairIndex > 1 ? pairIndex : ""}`;
     }
 
     if (rel.type === "one_to_one") {
@@ -279,6 +267,7 @@ function buildRelationGraph(project: SchemaProject): {
         fieldName: fkFieldName,
         modelName: targetModel,
         isArray: false,
+        nullable: sourceField.nullable,
         scalarFieldName: sourceField.name,
         targetFieldName: targetField.name,
         onDelete,
@@ -293,6 +282,7 @@ function buildRelationGraph(project: SchemaProject): {
         fieldName: inverseFieldName,
         modelName: sourceModel,
         isArray: false,
+        nullable: targetField.nullable,
         scalarFieldName: targetField.name,
         targetFieldName: sourceField.name,
         onDelete,
@@ -312,6 +302,7 @@ function buildRelationGraph(project: SchemaProject): {
         fieldName: fkFieldName,
         modelName: targetModel,
         isArray: false,
+        nullable: sourceField.nullable,
         scalarFieldName: sourceField.name,
         targetFieldName: targetField.name,
         onDelete,
@@ -325,6 +316,7 @@ function buildRelationGraph(project: SchemaProject): {
         fieldName: pkFieldName,
         modelName: sourceModel,
         isArray: true,
+        nullable: false,
         scalarFieldName: targetField.name,
         targetFieldName: sourceField.name,
         onDelete,
@@ -357,7 +349,8 @@ function renderRelationField(info: RelationFieldInfo): string {
   relParts.push(`fields: [${info.scalarFieldName}]`);
   relParts.push(`references: [${info.targetFieldName}]`);
   relParts.push(`onDelete: ${info.onDelete}`);
-  return `  ${info.fieldName} ${info.modelName}${info.isArray ? "[]" : ""} @relation(${relParts.join(", ")})`;
+  const q = info.nullable ? "?" : "";
+  return `  ${info.fieldName} ${info.modelName}${info.isArray ? "[]" : q} @relation(${relParts.join(", ")})`;
 }
 
 function renderModel(
@@ -392,11 +385,6 @@ function renderModel(
       } else {
         body.push(`  @@index([${cols.join(", ")}], name: "${idx.name}")`);
       }
-    }
-
-    if (!relationless) {
-      const constraint = junctionUniqueConstraint(table, project.relations);
-      if (constraint) body.push(constraint);
     }
   }
 

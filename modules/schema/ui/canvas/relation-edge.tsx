@@ -50,7 +50,7 @@ export function RelationEdge({
         id={id}
         path={path}
         className={cn(
-          "stroke-border stroke-[1.5] transition-colors hover:stroke-primary/50",
+          "stroke-[1.5] transition-colors stroke-primary/20 hover:stroke-primary/50",
           selected && "stroke-primary",
         )}
       />
@@ -60,8 +60,8 @@ export function RelationEdge({
           // biome-ignore lint/a11y/useKeyWithClickEvents: selection is pointer-driven inside the flow canvas
           <div
             className={cn(
-              "nodrag nopan pointer-events-auto absolute rounded-lg border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm transition-colors",
-              selected && "border-primary/40 bg-primary/10 text-primary",
+              "nodrag nopan pointer-events-auto absolute rounded-lg border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-xs transition-colors",
+              selected && "border-primary bg-primary text-primary-foreground",
             )}
             style={{
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,

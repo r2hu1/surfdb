@@ -1,7 +1,9 @@
+import { HandGrab } from "lucide-react";
 import type { FieldType } from "../../config/field-types";
 import { getFieldTypesForDialect } from "../../config/field-types";
 import { useDragPalette } from "../../hooks/use-drag-palette";
 import { useSchemaStore } from "../../store/schema.store";
+import { Hand } from "reicon-react";
 
 export function FieldPalette() {
   const dialect = useSchemaStore((s) => s.project.dialect);
@@ -10,9 +12,6 @@ export function FieldPalette() {
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs text-muted-foreground">
-        Drag a field type onto a table or canva to add it.
-      </p>
       <div className="grid grid-cols-2 gap-1.5">
         {types.map((type) => (
           <button
@@ -21,7 +20,7 @@ export function FieldPalette() {
             draggable
             onDragStart={(e) => startDrag(e, type.type as FieldType)}
             onDragEnd={endDrag}
-            className="flex cursor-grab items-center justify-between gap-1 rounded-xl border border-border/60 bg-background px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-muted active:cursor-grabbing"
+            className="flex group cursor-grab items-center justify-between gap-1 rounded-xl border border-border/60 bg-background px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-muted active:cursor-grabbing"
           >
             <span className="truncate font-medium">{type.label}</span>
             {type.recommended && (
@@ -29,6 +28,7 @@ export function FieldPalette() {
                 POP
               </span>
             )}
+            <Hand className="size-3 hidden group-hover:flex" />
           </button>
         ))}
       </div>
