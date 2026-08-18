@@ -60,7 +60,7 @@ export function SchemaSidebar() {
   return (
     <aside className="flex rounded-xl m-2 mr-0! justify-between shrink-0 flex-col border w-70 bg-background">
       <div>
-        <div className="flex p-3 items-center gap-1">
+        <div className="flex p-3 items-center">
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
