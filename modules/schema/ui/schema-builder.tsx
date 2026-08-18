@@ -44,7 +44,7 @@ export function SchemaBuilder() {
                 <PanelLeft className="size-4" />
               </Button>
               <button
-                className="p-1 text-sm px-2.5 font-medium hover:bg-secondary rounded-lg"
+                className="p-0.5 mr-0.5 text-sm px-2.5 font-medium hover:bg-secondary rounded-lg"
                 type="button"
                 onClick={openSettings}
                 aria-label="Project settings"
