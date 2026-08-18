@@ -99,7 +99,7 @@ export function SchemaCanvas() {
           variant={BackgroundVariant.Dots}
           gap={24}
           size={3}
-          color="var(--chart-1)"
+          color="var(--border)"
         />
         <MiniMap
           pannable

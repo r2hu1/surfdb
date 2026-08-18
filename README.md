@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SurfDB
+
+Visual database schema designer. Drag tables, connect relations, and export to Drizzle ORM, Prisma, or MongoDB.
+
+## Features
+
+- **Visual canvas** — drag-and-drop table editor powered by React Flow
+- **Multi-dialect** — PostgreSQL, MySQL, SQLite, MongoDB
+- **Export** — Drizzle ORM, Prisma, MongoDB models, JSON
+- **Import** — parse existing Drizzle/Prisma/MongoDB schemas back into the visual editor
+- **Templates** — auth, e-commerce, blog, SaaS, social, CRM starter schemas
+- **Undo/redo** — full history with Zustand + Zundo
+- **Auto-layout** — dagre-based graph arrangement
+- **Keyboard shortcuts** —快速操作 without mouse
+- **LocalStorage persistence** — schemas saved in browser, no backend required
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+bun install
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router, React 19) |
+| Language | TypeScript 5 |
+| Styling | Tailwind CSS 4 |
+| UI | shadcn/ui (Radix) |
+| Canvas | @xyflow/react + @dagrejs/dagre |
+| State | Zustand + Zundo + localStorage |
+| Linter | Biome |
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/                        # Routes (thin shell)
+modules/schema/             # Core module
+  domain/                   # Pure business logic (entities, services)
+  store/                    # Zustand stores (schema, UI, history)
+  adapters/                 # Export/import converters
+  config/                   # Field types, dialects, shortcuts
+  templates/                # Pre-built schema templates
+  hooks/                    # React hooks (UI ↔ store)
+  ui/                       # Components (canvas, panels, sidebar, toolbar)
+components/ui/              # shadcn components
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT

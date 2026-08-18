@@ -1,8 +1,15 @@
+import type { Metadata } from "next";
 import { buttonVariants } from "@/components/ui/button";
 import { ArrowUpRight, Box2Newicons as Boxes, Star } from "reicon-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+
+export const metadata: Metadata = {
+  title: "SurfDB",
+  description:
+    "Visual database schema designer. Drag tables, connect relations, and export to Drizzle ORM, Prisma, or MongoDB.",
+};
 
 export default function Home() {
   return (
@@ -11,7 +18,7 @@ export default function Home() {
         src="/preview.png"
         height={100}
         width={100}
-        className="absolute inset-0 -z-20 size-full object-cover opacity-70"
+        className="absolute inset-0 -z-20 size-full object-cover opacity-60"
         unoptimized
         alt=""
       />
@@ -19,7 +26,7 @@ export default function Home() {
       <div className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-t from-foreground via-foreground/20 to-foreground/50" />
 
       <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.03]"
+        className="pointer-events-none absolute inset-0 -z-10 opacity-40"
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",

@@ -62,6 +62,7 @@ interface RelationFieldInfo {
   modelName: string;
   isArray: boolean;
   nullable: boolean;
+  isOwningSide: boolean;
   scalarFieldName: string;
   targetFieldName: string;
   onDelete: string;
@@ -268,6 +269,7 @@ function buildRelationGraph(project: SchemaProject): {
         modelName: targetModel,
         isArray: false,
         nullable: sourceField.nullable,
+        isOwningSide: true,
         scalarFieldName: sourceField.name,
         targetFieldName: targetField.name,
         onDelete,
@@ -282,7 +284,8 @@ function buildRelationGraph(project: SchemaProject): {
         fieldName: inverseFieldName,
         modelName: sourceModel,
         isArray: false,
-        nullable: targetField.nullable,
+        nullable: true,
+        isOwningSide: false,
         scalarFieldName: targetField.name,
         targetFieldName: sourceField.name,
         onDelete,
@@ -303,6 +306,7 @@ function buildRelationGraph(project: SchemaProject): {
         modelName: targetModel,
         isArray: false,
         nullable: sourceField.nullable,
+        isOwningSide: true,
         scalarFieldName: sourceField.name,
         targetFieldName: targetField.name,
         onDelete,
@@ -317,6 +321,7 @@ function buildRelationGraph(project: SchemaProject): {
         modelName: sourceModel,
         isArray: true,
         nullable: false,
+        isOwningSide: false,
         scalarFieldName: targetField.name,
         targetFieldName: sourceField.name,
         onDelete,
@@ -343,14 +348,20 @@ function buildRelationGraph(project: SchemaProject): {
 }
 
 function renderRelationField(info: RelationFieldInfo): string {
+  const q = info.nullable ? "?" : "";
+  if (!info.isOwningSide) {
+    if (info.explicitRelationName) {
+      return `  ${info.fieldName} ${info.modelName}${info.isArray ? "[]" : q} @relation("${info.explicitRelationName}")`;
+    }
+    return `  ${info.fieldName} ${info.modelName}${info.isArray ? "[]" : q}`;
+  }
   const relParts: string[] = [];
   if (info.explicitRelationName)
     relParts.push(`"${info.explicitRelationName}"`);
   relParts.push(`fields: [${info.scalarFieldName}]`);
   relParts.push(`references: [${info.targetFieldName}]`);
   relParts.push(`onDelete: ${info.onDelete}`);
-  const q = info.nullable ? "?" : "";
-  return `  ${info.fieldName} ${info.modelName}${info.isArray ? "[]" : q} @relation(${relParts.join(", ")})`;
+  return `  ${info.fieldName} ${info.modelName}${q} @relation(${relParts.join(", ")})`;
 }
 
 function renderModel(

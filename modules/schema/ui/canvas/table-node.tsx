@@ -44,7 +44,7 @@ export const TableNode = memo(function TableNode({
         select("table", table.id);
       }}
       className={cn(
-        "w-60 rounded-lg bg-card text-sm text-card-foreground shadow-sm ring-1 ring-foreground/5 transition-shadow dark:ring-foreground/10",
+        "w-60 rounded-lg bg-background text-sm text-card-foreground shadow-sm ring-1 ring-foreground/5 transition-shadow dark:ring-foreground/10",
         selected && "ring-2 ring-primary",
         isOver && "ring-2 ring-primary ring-offset-2",
       )}

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { codeToHtml } from "shiki";
 import { Button } from "@/components/ui/button";
 import "./code-block.css";
+import { useTheme } from "next-themes";
 
 const LANG_ALIAS: Record<string, string> = {
   typescript: "ts",
@@ -27,10 +28,12 @@ export function SyntaxHighlight({
   const [html, setHtml] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const { resolvedTheme } = useTheme();
+
   useEffect(() => {
     let cancelled = false;
     const lang = LANG_ALIAS[language] ?? language;
-    codeToHtml(code, { lang, theme: "github-light" })
+    codeToHtml(code, { lang, theme: `github-${resolvedTheme}` })
       .then((h) => {
         if (!cancelled) setHtml(h);
       })

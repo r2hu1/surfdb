@@ -60,7 +60,7 @@ function formatMongooseDefault(field: Field): string | null {
 function fieldDef(
   field: Field,
   isFK: boolean,
-  relatedModelName?: string,
+  fkEntry?: { relatedModel: string; relatedFieldType: string },
 ): string {
   const parts: string[] = [];
   if (field.primaryKey) {
@@ -69,9 +69,10 @@ function fieldDef(
       : mongooseType(field);
     parts.push(`type: ${typeName}, required: true, unique: true`);
     if (field.type === "uuid") parts.push("default: () => crypto.randomUUID()");
-  } else if (isFK && relatedModelName) {
-    parts.push(`type: Schema.Types.ObjectId`);
-    parts.push(`ref: "${relatedModelName}"`);
+  } else if (isFK && fkEntry) {
+    const typeName = MONGODB_TYPE[fkEntry.relatedFieldType] ?? "String";
+    parts.push(`type: ${typeName}`);
+    parts.push(`ref: "${fkEntry.relatedModel}"`);
     if (!field.nullable) parts.push("required: true");
   } else {
     if (field.isArray) {
@@ -95,14 +96,20 @@ function fieldDef(
 
 function buildSchema(
   table: Table,
-  fkInfo: Map<string, { relatedModel: string }>,
-  hasTimestamps: boolean,
+  fkInfo: Map<string, { relatedModel: string; relatedFieldType: string }>,
 ): string {
   const name = schemaName(table.name);
+  const hasTimestamps = table.fields.some(
+    (f) =>
+      f.name === "created_at" ||
+      f.name === "updated_at" ||
+      f.name === "createdAt" ||
+      f.name === "updatedAt",
+  );
   const fields = table.fields
     .map((f) => {
       const info = fkInfo.get(f.id);
-      return fieldDef(f, !!info, info?.relatedModel);
+      return fieldDef(f, !!info, info);
     })
     .join(",\n");
   const indexes = table.indexes
@@ -148,7 +155,10 @@ export const mongodbAdapter: SchemaAdapter = {
 
     const normalized = normalizeRelationDirection(project);
 
-    const fkInfo = new Map<string, { relatedModel: string }>();
+    const fkInfo = new Map<
+      string,
+      { relatedModel: string; relatedFieldType: string }
+    >();
     for (const rel of normalized.relations) {
       const sourceTable = normalized.tables.find(
         (t) => t.id === rel.sourceTableId,
@@ -160,24 +170,18 @@ export const mongodbAdapter: SchemaAdapter = {
       const sourceField = sourceTable.fields.find(
         (f) => f.id === rel.sourceFieldId,
       );
+      const targetField = targetTable.fields.find(
+        (f) => f.id === rel.targetFieldId,
+      );
       if (!sourceField) continue;
       fkInfo.set(sourceField.id, {
         relatedModel: schemaName(targetTable.name),
+        relatedFieldType: targetField?.type ?? "string",
       });
     }
 
-    const hasTimestamps = normalized.tables.some((t) =>
-      t.fields.some(
-        (f) =>
-          f.name === "created_at" ||
-          f.name === "updated_at" ||
-          f.name === "createdAt" ||
-          f.name === "updatedAt",
-      ),
-    );
-
     const schemas = normalized.tables
-      .map((table) => buildSchema(table, fkInfo, hasTimestamps))
+      .map((table) => buildSchema(table, fkInfo))
       .join("\n\n");
     return `${header}${schemas}\n`;
   },

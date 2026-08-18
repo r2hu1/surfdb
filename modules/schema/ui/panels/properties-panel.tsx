@@ -8,6 +8,7 @@ import { FieldEditor } from "./field-editor";
 import { RelationEditor } from "./relation-editor";
 import { SchemaSettings } from "./schema-settings";
 import { TableEditor } from "./table-editor";
+import { ModeToggle } from "@/components/theme-changer";
 
 export function PropertiesPanel() {
   const project = useSchemaStore((s) => s.project);
@@ -73,6 +74,9 @@ export function PropertiesPanel() {
       <ScrollArea className="flex-1 h-130">
         <div className="px-4 pb-6">{content}</div>
       </ScrollArea>
+      <div className="p-2">
+        <ModeToggle />
+      </div>
     </aside>
   );
 }

@@ -215,19 +215,15 @@ function fieldDefinition(
       : "";
   let out = `  ${f.name}: ${formatOptions(base)}${arraySuffix}`;
   if (f.primaryKey) {
-    if (!isFK) {
-      const dflt = config.defaultFn(f, isFK);
-      if (dflt) out += dflt;
-    }
+    const dflt = config.defaultFn(f, isFK);
+    if (dflt) out += dflt;
     out += ".primaryKey()";
     if (!f.nullable) out += ".notNull()";
   } else {
     if (!f.nullable) out += ".notNull()";
     if (f.unique) out += ".unique()";
-    if (!isFK) {
-      const dflt = config.defaultFn(f, isFK);
-      if (dflt) out += dflt;
-    }
+    const dflt = config.defaultFn(f, isFK);
+    if (dflt) out += dflt;
   }
   return out;
 }
