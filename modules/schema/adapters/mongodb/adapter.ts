@@ -32,6 +32,11 @@ function schemaName(name: string): string {
   return /^[A-Za-z]/.test(pascal) ? pascal : `M${pascal}`;
 }
 
+function fieldKey(name: string): string {
+  const cleaned = name.replace(/[^A-Za-z0-9_$]/g, "_");
+  return /^\d/.test(cleaned) ? `_${cleaned}` : cleaned;
+}
+
 function formatMongooseDefault(field: Field): string | null {
   if (field.defaultValue == null) return null;
   const v = field.defaultValue.trim();
@@ -91,7 +96,7 @@ function fieldDef(
   }
   if (field.comment)
     parts.push(`description: "${field.comment.replaceAll('"', '\\"')}"`);
-  return `  ${field.name}: {\n    ${parts.join(",\n    ")}\n  }`;
+  return `  ${fieldKey(field.name)}: {\n    ${parts.join(",\n    ")}\n  }`;
 }
 
 function buildSchema(
@@ -115,7 +120,12 @@ function buildSchema(
   const indexes = table.indexes
     .map((idx) => {
       const cols = idx.fieldIds
-        .map((id) => `"${table.fields.find((f) => f.id === id)?.name}"`)
+        .map((id) => {
+          const field = table.fields.find((f) => f.id === id);
+          if (!field) return "";
+          const direction = idx.type === "hash" ? "hashed" : "1";
+          return `${fieldKey(field.name)}: ${direction}`;
+        })
         .filter(Boolean)
         .join(", ");
       return `  ${name}Schema.index({ ${cols} }${idx.unique ? ", { unique: true }" : ""})`;

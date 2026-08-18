@@ -142,13 +142,15 @@ function defaultAttr(
   isFK: boolean,
   relationless: boolean,
 ): string {
+  if (relationless && field.primaryKey) return "";
   if (field.primaryKey && field.type === "uuid" && !relationless)
     return "@default(uuid())";
-  if (field.autoIncrement) return "@default(autoincrement())";
+  if (field.autoIncrement && !relationless) return "@default(autoincrement())";
   if (field.type === "uuid" && !relationless && !isFK)
     return "@default(uuid())";
   if (field.defaultValue) {
     const v = field.defaultValue.trim();
+    if (field.type === "enum") return `@default(${sanitizeEnumValue(v)})`;
     if (
       v === "now" ||
       v === "NOW()" ||
@@ -172,16 +174,22 @@ function fieldLine(
   relationless: boolean,
 ): string {
   const type =
-    field.type === "enum" && field.enumValues?.length
-      ? `${model}${field.name.charAt(0).toUpperCase() + field.name.slice(1)}`
-      : prismaScalar(field, relationless);
+    relationless && field.primaryKey
+      ? "String"
+      : field.type === "enum" && field.enumValues?.length
+        ? `${model}${field.name.charAt(0).toUpperCase() + field.name.slice(1)}`
+        : prismaScalar(field, relationless);
   const arraySuffix = field.isArray ? "[]" : "";
   let line = `  ${field.name} ${type}${arraySuffix}`;
   if (field.nullable && !field.primaryKey) line += "?";
-  if (field.primaryKey) line += " @id";
+  if (field.primaryKey) {
+    line += " @id";
+    if (relationless) line += ' @default(auto()) @map("_id") @db.ObjectId';
+  }
   if (field.unique && !field.primaryKey) line += " @unique";
   const dflt = defaultAttr(field, isFK, relationless);
   if (dflt) line += ` ${dflt}`;
+  if (relationless && isFK && type === "String") line += " @db.ObjectId";
   if (field.comment) line += ` /// ${field.comment.replaceAll("\n", " ")}`;
   return line;
 }
@@ -347,8 +355,20 @@ function buildRelationGraph(project: SchemaProject): {
   return { entries, scalarFieldMap, relationFieldsForTable };
 }
 
-function renderRelationField(info: RelationFieldInfo): string {
+function renderRelationField(
+  info: RelationFieldInfo,
+  relationless: boolean,
+): string {
   const q = info.nullable ? "?" : "";
+  if (relationless) {
+    if (!info.isOwningSide) {
+      if (info.isArray) {
+        return `  ${info.fieldName} ${info.modelName}[] @relation(references: [${info.scalarFieldName}])`;
+      }
+      return `  ${info.fieldName} ${info.modelName}${q}`;
+    }
+    return `  ${info.fieldName} ${info.modelName}${q} @relation(fields: [${info.scalarFieldName}], references: [${info.targetFieldName}])`;
+  }
   if (!info.isOwningSide) {
     if (info.explicitRelationName) {
       return `  ${info.fieldName} ${info.modelName}${info.isArray ? "[]" : q} @relation("${info.explicitRelationName}")`;
@@ -378,28 +398,26 @@ function renderModel(
     body.push(fieldLine(field, model, isFK, relationless));
   }
 
-  if (!relationless) {
-    const relFields = graph.relationFieldsForTable.get(table.id) ?? [];
-    const renderedNames = new Set(body.map((l) => l.split(/\s/)[1]));
-    for (const info of relFields) {
-      if (renderedNames.has(info.fieldName)) continue;
-      body.push(renderRelationField(info));
-    }
+  const relFields = graph.relationFieldsForTable.get(table.id) ?? [];
+  const renderedNames = new Set(body.map((l) => l.split(/\s/)[1]));
+  for (const info of relFields) {
+    if (renderedNames.has(info.fieldName)) continue;
+    body.push(renderRelationField(info, relationless));
+  }
 
-    for (const idx of table.indexes) {
-      const cols = idx.fieldIds
-        .map((id) => table.fields.find((f) => f.id === id)?.name)
-        .filter((n): n is string => Boolean(n));
-      if (!cols.length) continue;
-      if (idx.unique) {
-        body.push(`  @@unique([${cols.join(", ")}], name: "${idx.name}")`);
-      } else {
-        body.push(`  @@index([${cols.join(", ")}], name: "${idx.name}")`);
-      }
+  for (const idx of table.indexes) {
+    const cols = idx.fieldIds
+      .map((id) => table.fields.find((f) => f.id === id)?.name)
+      .filter((n): n is string => Boolean(n));
+    if (!cols.length) continue;
+    if (idx.unique) {
+      body.push(`  @@unique([${cols.join(", ")}], name: "${idx.name}")`);
+    } else {
+      body.push(`  @@index([${cols.join(", ")}], name: "${idx.name}")`);
     }
   }
 
-  const blocks = [...enumDefs(table, model)];
+  const blocks = relationless ? [] : enumDefs(table, model);
   blocks.push(`model ${model} {\n${body.join("\n")}\n}`);
   return blocks.join("\n\n");
 }

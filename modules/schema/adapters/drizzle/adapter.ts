@@ -23,18 +23,21 @@ const PG: DrizzleConfig = {
   typeMap: {
     string: (f) => `varchar("${f.name}", { length: ${f.length ?? 255} })`,
     text: (f) => `text("${f.name}")`,
-    integer: (f) => `integer("${f.name}")`,
+    integer: (f) =>
+      f.autoIncrement ? `serial("${f.name}")` : `integer("${f.name}")`,
     bigint: (f) =>
       f.autoIncrement
         ? `bigserial("${f.name}")`
         : `bigint("${f.name}", { mode: "number" })`,
-    smallint: (f) => `smallint("${f.name}")`,
+    smallint: (f) =>
+      f.autoIncrement ? `smallserial("${f.name}")` : `smallint("${f.name}")`,
     float: (f) => `real("${f.name}")`,
     double: (f) => `doublePrecision("${f.name}")`,
     decimal: (f) =>
       `numeric("${f.name}", { precision: ${f.precision ?? 10}, scale: 2 })`,
     boolean: (f) => `boolean("${f.name}")`,
     date: (f) => `date("${f.name}")`,
+    datetime: (f) => `timestamp("${f.name}")`,
     timestamp: (f) => `timestamp("${f.name}")`,
     time: (f) => `time("${f.name}")`,
     json: (f) => `json("${f.name}")`,
@@ -67,10 +70,7 @@ const MYSQL: DrizzleConfig = {
         ? `longtext("${f.name}")`
         : `text("${f.name}")`,
     integer: (f) => `int("${f.name}")`,
-    bigint: (f) =>
-      f.autoIncrement
-        ? `bigint("${f.name}", { autoIncrement: true })`
-        : `bigint("${f.name}")`,
+    bigint: (f) => `bigint("${f.name}")`,
     smallint: (f) => `smallint("${f.name}")`,
     float: (f) => `float("${f.name}")`,
     double: (f) => `double("${f.name}")`,
@@ -87,7 +87,7 @@ const MYSQL: DrizzleConfig = {
     binary: (f) => `binary("${f.name}")`,
     blob: (f) => `blob("${f.name}")`,
     enum: (f) =>
-      `enum("${f.name}", [${(f.enumValues ?? []).map((v) => `'${v}'`).join(", ")}])`,
+      `mysqlEnum("${f.name}", [${(f.enumValues ?? []).map((v) => `'${v}'`).join(", ")}])`,
   },
   defaultFn: (f, _isFK) => {
     if (f.type === "uuid") return "";
@@ -108,8 +108,14 @@ const SQLITE: DrizzleConfig = {
   typeMap: {
     string: (f) => `text("${f.name}")`,
     text: (f) => `text("${f.name}")`,
-    integer: (f) => `integer("${f.name}")`,
-    bigint: (f) => `integer("${f.name}")`,
+    integer: (f) =>
+      f.autoIncrement
+        ? `integer("${f.name}", { autoincrement: true })`
+        : `integer("${f.name}")`,
+    bigint: (f) =>
+      f.autoIncrement
+        ? `integer("${f.name}", { autoincrement: true })`
+        : `integer("${f.name}")`,
     smallint: (f) => `integer("${f.name}")`,
     float: (f) => `real("${f.name}")`,
     double: (f) => `real("${f.name}")`,
@@ -165,9 +171,11 @@ const COLUMN_TYPE_IMPORTS: Record<string, string> = {
   varchar: "varchar",
   text: "text",
   integer: "integer",
+  serial: "serial",
   bigint: "bigint",
-  bigserial: "bigint",
+  bigserial: "bigserial",
   smallint: "smallint",
+  smallserial: "smallserial",
   real: "real",
   doublePrecision: "doublePrecision",
   numeric: "numeric",
@@ -201,6 +209,7 @@ function fieldDefinition(
   f: Field,
   enumJsName?: string,
   isFK = false,
+  refSuffix = "",
 ): string {
   const isEnumPg = f.type === "enum" && config.core === "drizzle-orm/pg-core";
   const base =
@@ -217,13 +226,14 @@ function fieldDefinition(
   if (f.primaryKey) {
     const dflt = config.defaultFn(f, isFK);
     if (dflt) out += dflt;
+    out += refSuffix;
     out += ".primaryKey()";
-    if (!f.nullable) out += ".notNull()";
   } else {
     if (!f.nullable) out += ".notNull()";
     if (f.unique) out += ".unique()";
     const dflt = config.defaultFn(f, isFK);
     if (dflt) out += dflt;
+    out += refSuffix;
   }
   return out;
 }
@@ -293,13 +303,16 @@ function buildTable(
   const lines: string[] = [];
   const fields = table.fields.map((f) => {
     const rel = relationRefs.find((r) => r.sourceFieldId === f.id);
-    let def = fieldDefinition(config, f, enumJsNameOf(table, f.id), !!rel);
-    if (rel) {
-      def = def.replace(/\.primaryKey\(\)$/, "");
-      const ref = referenceSuffix(rel, jsNameOfTarget, targetFieldOf);
-      def += ref;
-    }
-    return def;
+    const refSuffix = rel
+      ? referenceSuffix(rel, jsNameOfTarget, targetFieldOf)
+      : "";
+    return fieldDefinition(
+      config,
+      f,
+      enumJsNameOf(table, f.id),
+      !!rel,
+      refSuffix,
+    );
   });
   const idxs = renderIndexes(table);
   if (idxs.length) {
@@ -358,7 +371,7 @@ export const drizzleAdapter: SchemaAdapter = {
           config.core === "drizzle-orm/pg-core" &&
           field.enumValues?.length
         ) {
-          const enumName = `${sanitizeJsName(table.name)}_${field.name}_enum`;
+          const enumName = `${sanitizeJsName(table.name)}_${sanitizeJsName(field.name)}_enum`;
           imports.add("pgEnum");
           enumJsNames.set(`${table.id}:${field.id}`, enumName);
           const values = field.enumValues.map((v) => `  "${v}",`).join("\n");
@@ -366,11 +379,18 @@ export const drizzleAdapter: SchemaAdapter = {
             `export const ${enumName} = pgEnum("${enumName}", [\n${values}\n]);`,
           );
         }
+        if (field.type === "enum" && config.core === "drizzle-orm/mysql-core") {
+          imports.add("enum as mysqlEnum");
+        }
         const typeStr = (config.typeMap[field.type] ?? config.typeMap.string)(
           field,
         );
         const fnName = COLUMN_TYPE_IMPORTS[typeStr.split("(")[0]];
         if (fnName) columnImports.add(fnName);
+      }
+      if (table.indexes.length) {
+        imports.add("index");
+        imports.add("uniqueIndex");
       }
     }
 
