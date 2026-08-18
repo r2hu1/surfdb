@@ -13,6 +13,7 @@ const MONGODB_TYPE: Record<string, string> = {
   decimal: "Schema.Types.Decimal128",
   boolean: "Boolean",
   date: "Date",
+  datetime: "Date",
   timestamp: "Date",
   json: "Mixed",
   uuid: "String",

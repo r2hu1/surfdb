@@ -17,6 +17,23 @@ interface DrizzleConfig {
   defaultFn: (f: Field, isFK: boolean) => string;
 }
 
+function defaultLiteral(f: Field): string | null {
+  if (!f.defaultValue) return null;
+  const v = f.defaultValue.trim();
+  if (
+    v === "now" ||
+    v === "now()" ||
+    v === "NOW()" ||
+    v === "CURRENT_TIMESTAMP"
+  )
+    return "now";
+  if (v === "true" || v === "false") return v;
+  if (/^-?\d+(\.\d+)?$/.test(v)) return v;
+  if (/^["'`]/.test(v)) return v;
+  if (v.startsWith("[") || v.startsWith("{")) return v;
+  return `'${v.replaceAll("'", "\\'")}'`;
+}
+
 const PG: DrizzleConfig = {
   core: "drizzle-orm/pg-core",
   tableFn: "pgTable",
@@ -50,12 +67,9 @@ const PG: DrizzleConfig = {
   defaultFn: (f, isFK) => {
     if (f.autoIncrement) return "";
     if (f.type === "uuid" && !isFK) return ".defaultRandom()";
-    if (f.defaultValue) {
-      const v = f.defaultValue;
-      if (f.type === "enum" && !/^['"`]/.test(v))
-        return `.default('${v.replaceAll("'", "\\'")}')`;
-      return `.default(${v})`;
-    }
+    const lit = defaultLiteral(f);
+    if (lit === "now") return ".defaultNow()";
+    if (lit != null) return `.default(${lit})`;
     return "";
   },
 };
@@ -90,14 +104,10 @@ const MYSQL: DrizzleConfig = {
       `mysqlEnum("${f.name}", [${(f.enumValues ?? []).map((v) => `'${v}'`).join(", ")}])`,
   },
   defaultFn: (f, _isFK) => {
-    if (f.type === "uuid") return "";
     if (f.autoIncrement) return ".autoIncrement()";
-    if (f.defaultValue) {
-      const v = f.defaultValue;
-      if (f.type === "enum" && !/^['"`]/.test(v))
-        return `.default('${v.replaceAll("'", "\\'")}')`;
-      return `.default(${v})`;
-    }
+    const lit = defaultLiteral(f);
+    if (lit === "now") return ".defaultNow()";
+    if (lit != null) return `.default(${lit})`;
     return "";
   },
 };
@@ -133,8 +143,9 @@ const SQLITE: DrizzleConfig = {
     enum: (f) => `text("${f.name}")`,
   },
   defaultFn: (f, _isFK) => {
-    if (f.defaultValue) return `.default(${f.defaultValue})`;
-    if (f.type === "boolean") return ".default(false)";
+    const lit = defaultLiteral(f);
+    if (lit === "now") return ".defaultNow()";
+    if (lit != null) return `.default(${lit})`;
     return "";
   },
 };

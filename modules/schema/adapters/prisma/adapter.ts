@@ -35,6 +35,7 @@ const MONGODB_FIELD_MAP: Record<string, string> = {
   decimal: "Decimal",
   boolean: "Boolean",
   date: "DateTime",
+  datetime: "DateTime",
   timestamp: "DateTime",
   json: "Json",
   uuid: "String",
@@ -150,7 +151,10 @@ function defaultAttr(
     return "@default(uuid())";
   if (field.defaultValue) {
     const v = field.defaultValue.trim();
-    if (field.type === "enum") return `@default(${sanitizeEnumValue(v)})`;
+    if (field.type === "enum" && !relationless)
+      return `@default(${sanitizeEnumValue(v)})`;
+    if (field.type === "enum" && relationless)
+      return `@default("${v.replaceAll('"', '\\"')}")`;
     if (
       v === "now" ||
       v === "NOW()" ||
@@ -176,9 +180,11 @@ function fieldLine(
   const type =
     relationless && field.primaryKey
       ? "String"
-      : field.type === "enum" && field.enumValues?.length
-        ? `${model}${field.name.charAt(0).toUpperCase() + field.name.slice(1)}`
-        : prismaScalar(field, relationless);
+      : relationless && isFK
+        ? "String"
+        : field.type === "enum" && field.enumValues?.length && !relationless
+          ? `${model}${field.name.charAt(0).toUpperCase() + field.name.slice(1)}`
+          : prismaScalar(field, relationless);
   const arraySuffix = field.isArray ? "[]" : "";
   let line = `  ${field.name} ${type}${arraySuffix}`;
   if (field.nullable && !field.primaryKey) line += "?";
