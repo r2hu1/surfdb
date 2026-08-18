@@ -177,6 +177,7 @@ export const ecommerceTemplate: Template = {
       "id",
       "categories",
       "parent_id",
+      { onDelete: "set_null" },
     );
     relation(
       project,
@@ -228,6 +229,24 @@ export const ecommerceTemplate: Template = {
       "id",
       "cart_items",
       "product_id",
+    );
+    relation(
+      project,
+      "one_to_many",
+      "addresses",
+      "id",
+      "orders",
+      "shipping_address_id",
+      { onDelete: "set_null" },
+    );
+    relation(
+      project,
+      "one_to_many",
+      "addresses",
+      "id",
+      "orders",
+      "billing_address_id",
+      { onDelete: "set_null" },
     );
 
     return project;

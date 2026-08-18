@@ -67,7 +67,8 @@ export const blogTemplate: Template = {
 
     idField(comments);
     field(comments, "post_id", "uuid", { nullable: false });
-    field(comments, "author_name", "string", { nullable: false });
+    field(comments, "author_id", "uuid");
+    field(comments, "author_name", "string");
     field(comments, "author_email", "string");
     field(comments, "content", "text", { nullable: false });
     field(comments, "status", "enum", {
@@ -93,6 +94,9 @@ export const blogTemplate: Template = {
     relation(project, "one_to_many", "posts", "id", "post_tags", "post_id");
     relation(project, "one_to_many", "tags", "id", "post_tags", "tag_id");
     relation(project, "one_to_many", "posts", "id", "comments", "post_id");
+    relation(project, "one_to_many", "authors", "id", "comments", "author_id", {
+      onDelete: "set_null",
+    });
 
     return project;
   },

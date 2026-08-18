@@ -1,5 +1,6 @@
 import type { Field, SchemaProject, Table } from "../../domain";
 import type { SchemaAdapter } from "../adapter.interface";
+import { normalizeRelationDirection } from "../../domain/services/schema.service";
 import { importPrismaSchema } from "./import";
 
 const PRISMA_TYPE: Record<string, string> = {
@@ -213,8 +214,9 @@ export const prismaAdapter: SchemaAdapter = {
       "",
     ].join("\n");
 
+    const normalized = normalizeRelationDirection(project);
     const models = project.tables
-      .map((table) => renderModel(table, project))
+      .map((table) => renderModel(table, normalized))
       .join("\n\n");
     return `${header + models}\n`;
   },

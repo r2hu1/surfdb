@@ -70,7 +70,7 @@ export function PropertiesPanel() {
           <X className="size-3.5" />
         </Button>
       </div>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 h-130">
         <div className="px-4 pb-6">{content}</div>
       </ScrollArea>
     </aside>

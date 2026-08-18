@@ -282,11 +282,37 @@ export function addRelation(
   const validation = validateRelation(project, params);
   if (!validation.valid) return project;
   const relation = createRelation(params);
-  return {
+  return normalizeRelationDirection({
     ...project,
     relations: [...project.relations, relation],
     updatedAt: Date.now(),
-  };
+  });
+}
+
+export function normalizeRelationDirection(
+  project: SchemaProject,
+): SchemaProject {
+  const fieldOf = (tableId: string, fieldId: string) =>
+    project.tables
+      .find((t) => t.id === tableId)
+      ?.fields.find((f) => f.id === fieldId);
+  const relations = project.relations.map((r) => {
+    const source = fieldOf(r.sourceTableId, r.sourceFieldId);
+    const target = fieldOf(r.targetTableId, r.targetFieldId);
+    const sourceIsKey = Boolean(source?.primaryKey || source?.unique);
+    const targetIsKey = Boolean(target?.primaryKey || target?.unique);
+    if (!targetIsKey && sourceIsKey) {
+      return {
+        ...r,
+        sourceTableId: r.targetTableId,
+        sourceFieldId: r.targetFieldId,
+        targetTableId: r.sourceTableId,
+        targetFieldId: r.sourceFieldId,
+      };
+    }
+    return r;
+  });
+  return { ...project, relations };
 }
 
 export function deleteRelation(

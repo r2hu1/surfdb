@@ -1,11 +1,14 @@
-import type { DatabaseDialect } from "../../config/db-dialects";
 import type { Field, Relation, SchemaProject, Table } from "../../domain";
+import { normalizeRelationDirection } from "../../domain/services/schema.service";
 import type { SchemaAdapter } from "../adapter.interface";
+import { importDrizzleSchema } from "./import";
 
 type DrizzleCore =
   | "drizzle-orm/pg-core"
   | "drizzle-orm/mysql-core"
   | "drizzle-orm/sqlite-core";
+
+type DialectConfigKey = "postgresql" | "mysql" | "sqlite";
 
 interface DrizzleConfig {
   core: DrizzleCore;
@@ -39,12 +42,17 @@ const PG: DrizzleConfig = {
     uuid: (f) => `uuid("${f.name}")`,
     binary: (f) => `bytea("${f.name}")`,
     blob: (f) => `bytea("${f.name}")`,
-    enum: (f) => `"${f.name}"`,
+    enum: (f) => `text("${f.name}")`,
   },
   defaultFn: (f) => {
     if (f.autoIncrement) return "";
     if (f.type === "uuid") return ".defaultRandom()";
-    if (f.defaultValue) return `.default(${f.defaultValue})`;
+    if (f.defaultValue) {
+      const v = f.defaultValue;
+      if (f.type === "enum" && !/^['"`]/.test(v))
+        return `.default('${v.replaceAll("'", "\\'")}')`;
+      return `.default(${v})`;
+    }
     return "";
   },
 };
@@ -84,7 +92,12 @@ const MYSQL: DrizzleConfig = {
   defaultFn: (f) => {
     if (f.type === "uuid") return "";
     if (f.autoIncrement) return ".autoIncrement()";
-    if (f.defaultValue) return `.default(${f.defaultValue})`;
+    if (f.defaultValue) {
+      const v = f.defaultValue;
+      if (f.type === "enum" && !/^['"`]/.test(v))
+        return `.default('${v.replaceAll("'", "\\'")}')`;
+      return `.default(${v})`;
+    }
     return "";
   },
 };
@@ -120,11 +133,10 @@ const SQLITE: DrizzleConfig = {
   },
 };
 
-const CONFIGS: Record<DatabaseDialect, DrizzleConfig> = {
+const CONFIGS: Partial<Record<DialectConfigKey, DrizzleConfig>> = {
   postgresql: PG,
   mysql: MYSQL,
   sqlite: SQLITE,
-  mongodb: PG,
 };
 
 const ARRAY_TYPES = new Set([
@@ -146,14 +158,42 @@ const ARRAY_TYPES = new Set([
 ]);
 
 function columnType(config: DrizzleConfig, f: Field): string {
-  if (config.core !== "drizzle-orm/pg-core" || !f.isArray) {
-    return (config.typeMap[f.type] ?? config.typeMap.string)(f);
-  }
-  const inner = (config.typeMap[f.type] ?? config.typeMap.string)(f);
-  if (!ARRAY_TYPES.has(f.type)) return inner;
-  const fn = inner.split("(")[0];
-  const args = inner.slice(inner.indexOf("("), inner.lastIndexOf(")"));
-  return `${fn}(${args}, { array: true })`;
+  return (config.typeMap[f.type] ?? config.typeMap.string)(f);
+}
+
+const COLUMN_TYPE_IMPORTS: Record<string, string> = {
+  varchar: "varchar",
+  text: "text",
+  integer: "integer",
+  bigint: "bigint",
+  bigserial: "bigint",
+  smallint: "smallint",
+  real: "real",
+  doublePrecision: "doublePrecision",
+  numeric: "numeric",
+  boolean: "boolean",
+  date: "date",
+  timestamp: "timestamp",
+  time: "time",
+  json: "json",
+  jsonb: "jsonb",
+  uuid: "uuid",
+  bytea: "bytea",
+  char: "char",
+  int: "int",
+  float: "float",
+  double: "double",
+  datetime: "datetime",
+  binary: "binary",
+  blob: "blob",
+};
+
+function formatOptions(typeStr: string): string {
+  return typeStr.replace(/,\s*\{([^}]+)\}/g, (_match, inner: string) => {
+    const props = inner.split(",").map((s: string) => s.trim());
+    if (props.length <= 1) return `, { ${props[0]} }`;
+    return `,\n${props.map((p: string) => `      ${p}`).join(",\n")},\n    `;
+  });
 }
 
 function fieldDefinition(
@@ -166,13 +206,24 @@ function fieldDefinition(
     isEnumPg && enumJsName
       ? `${enumJsName}("${f.name}")`
       : columnType(config, f);
-  let out = `  ${f.name}: ${base}`;
-  if (f.primaryKey) out += ".primaryKey()";
-  if (f.unique) out += ".unique()";
-  if (!f.nullable) out += ".notNull()";
-  const dflt = config.defaultFn(f);
-  if (dflt) out += dflt;
-  if (f.comment) out += `.comment("${f.comment.replaceAll('"', '\\"')}")`;
+  const arraySuffix =
+    config.core === "drizzle-orm/pg-core" &&
+    f.isArray &&
+    ARRAY_TYPES.has(f.type)
+      ? ".array()"
+      : "";
+  let out = `  ${f.name}: ${formatOptions(base)}${arraySuffix}`;
+  if (f.primaryKey) {
+    const dflt = config.defaultFn(f);
+    if (dflt) out += dflt;
+    out += ".primaryKey()";
+    if (!f.nullable) out += ".notNull()";
+  } else {
+    if (!f.nullable) out += ".notNull()";
+    if (f.unique) out += ".unique()";
+    const dflt = config.defaultFn(f);
+    if (dflt) out += dflt;
+  }
   return out;
 }
 
@@ -222,10 +273,7 @@ function referenceSuffix(
   if (!targetJs || !targetField) return "";
   const action = relation.onDelete ?? "no_action";
   const ref = `() => ${targetJs}.${targetField.name}`;
-  const onDelete =
-    action !== "no_action"
-      ? `, { onDelete: "${action.replaceAll("_", " ")}" }`
-      : "";
+  const onDelete = action !== "no_action" ? `, { onDelete: "${action}" }` : "";
   return `.references(${ref}${onDelete})`;
 }
 
@@ -254,17 +302,26 @@ function buildTable(
     lines.push(fields.join(",\n"));
     lines.push("}, (t) => [");
     lines.push(...idxs);
-    lines.push("])");
+    lines.push("]);");
   } else {
     lines.push(`export const ${jsName} = ${config.tableFn}("${table.name}", {`);
     lines.push(fields.join(",\n"));
-    lines.push("})");
+    lines.push("});");
   }
   return lines;
 }
 
 function sanitizeJsName(name: string): string {
-  const camel = name.replace(/[^a-zA-Z0-9_]/g, "_").replace(/_+$/g, "");
+  const camel = name
+    .replace(/[^a-zA-Z0-9_]/g, "_")
+    .split(/_+/)
+    .filter(Boolean)
+    .map((part, i) =>
+      i === 0
+        ? part.charAt(0).toLowerCase() + part.slice(1)
+        : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase(),
+    )
+    .join("");
   return /^[A-Za-z_]/.test(camel) ? camel : `t_${camel}`;
 }
 
@@ -278,13 +335,14 @@ export const drizzleAdapter: SchemaAdapter = {
   supportsImport: true,
 
   export(project: SchemaProject): string {
-    const config = CONFIGS[project.dialect] ?? PG;
+    const config = CONFIGS[project.dialect as DialectConfigKey] ?? PG;
     const nameToJs = new Map<string, string>();
     for (const table of project.tables) {
       nameToJs.set(table.name, sanitizeJsName(table.name));
     }
 
     const imports = new Set<string>();
+    const columnImports = new Set<string>();
     const enums: string[] = [];
     const enumJsNames = new Map<string, string>();
 
@@ -298,15 +356,22 @@ export const drizzleAdapter: SchemaAdapter = {
           const enumName = `${sanitizeJsName(table.name)}_${field.name}_enum`;
           imports.add("pgEnum");
           enumJsNames.set(`${table.id}:${field.id}`, enumName);
+          const values = field.enumValues.map((v) => `  "${v}",`).join("\n");
           enums.push(
-            `export const ${enumName} = pgEnum("${enumName}", [${field.enumValues.map((v) => `'${v}'`).join(", ")}])`,
+            `export const ${enumName} = pgEnum("${enumName}", [\n${values}\n]);`,
           );
         }
+        const typeStr = (config.typeMap[field.type] ?? config.typeMap.string)(
+          field,
+        );
+        const fnName = COLUMN_TYPE_IMPORTS[typeStr.split("(")[0]];
+        if (fnName) columnImports.add(fnName);
       }
     }
 
+    const relations = normalizeRelationDirection(project).relations;
     const relationMap = new Map<string, Relation[]>();
-    for (const rel of project.relations) {
+    for (const rel of relations) {
       if (!relationMap.has(rel.sourceTableId))
         relationMap.set(rel.sourceTableId, []);
       relationMap.get(rel.sourceTableId)?.push(rel);
@@ -319,8 +384,14 @@ export const drizzleAdapter: SchemaAdapter = {
 
     const skipped: string[] = [];
     const chunks: string[] = [];
+
+    const allImports = [
+      config.tableFn,
+      ...[...imports].sort(),
+      ...[...columnImports].sort(),
+    ];
     chunks.push(
-      `import { ${config.tableFn}${imports.size ? `, ${[...imports].join(", ")}` : ""} } from "${config.core}"\n`,
+      `import {\n${allImports.map((i) => `  ${i},`).join("\n")}\n} from "${config.core}";\n`,
     );
     if (enums.length) chunks.push(enums.join("\n\n"));
 
@@ -371,6 +442,10 @@ export const drizzleAdapter: SchemaAdapter = {
         return true;
       });
 
+      const tableHeader = table.name.toUpperCase().replace(/_/g, " ");
+      chunks.push(
+        `/* ${"*".repeat(57)} */\n/* ${tableHeader.padEnd(57)} */\n/* ${"*".repeat(57)} */`,
+      );
       chunks.push(
         buildTable(
           config,
@@ -396,7 +471,7 @@ export const drizzleAdapter: SchemaAdapter = {
     return `${chunks.join("\n\n")}\n`;
   },
 
-  import(_code: string): SchemaProject {
-    throw new Error("Drizzle import is not supported yet");
+  import(code: string): SchemaProject {
+    return importDrizzleSchema(code);
   },
 };

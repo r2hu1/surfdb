@@ -1,5 +1,6 @@
 import type { Field, SchemaProject, Table } from "../../domain";
 import type { SchemaAdapter } from "../adapter.interface";
+import { importMongooseSchema } from "./import";
 
 const MONGODB_TYPE: Record<string, string> = {
   string: "String",
@@ -33,11 +34,17 @@ function schemaName(name: string): string {
 function fieldDef(field: Field): string {
   const parts: string[] = [];
   if (field.primaryKey) {
-    parts.push(`type: ${mongooseType(field)}, required: true, unique: true`);
+    const typeName = field.isArray
+      ? `[${mongooseType(field)}]`
+      : mongooseType(field);
+    parts.push(`type: ${typeName}, required: true, unique: true`);
     if (field.type === "uuid") parts.push("default: () => crypto.randomUUID()");
   } else {
-    parts.push(`type: ${mongooseType(field)}`);
-    if (field.isArray) parts.push("type: [String]");
+    if (field.isArray) {
+      parts.push(`type: [${mongooseType(field)}]`);
+    } else {
+      parts.push(`type: ${mongooseType(field)}`);
+    }
     if (!field.nullable) parts.push("required: true");
     if (field.unique) parts.push("unique: true");
     if (field.defaultValue) parts.push(`default: ${field.defaultValue}`);
@@ -56,7 +63,7 @@ function buildSchema(table: Table): string {
         .map((id) => `"${table.fields.find((f) => f.id === id)?.name}"`)
         .filter(Boolean)
         .join(", ");
-      return `  schema.index({ ${cols} }${idx.unique ? ", { unique: true }" : ""})`;
+      return `  ${name}Schema.index({ ${cols} }${idx.unique ? ", { unique: true }" : ""})`;
     })
     .join("\n");
 
@@ -81,7 +88,7 @@ export const mongodbAdapter: SchemaAdapter = {
   language: "javascript",
   extension: "js",
   mimeType: "text/javascript",
-  supportsImport: false,
+  supportsImport: true,
 
   export(project: SchemaProject): string {
     const header = [
@@ -94,7 +101,7 @@ export const mongodbAdapter: SchemaAdapter = {
     return `${header + schemas}\n`;
   },
 
-  import(_code: string): SchemaProject {
-    throw new Error("MongoDB import is not supported yet");
+  import(code: string): SchemaProject {
+    return importMongooseSchema(code);
   },
 };

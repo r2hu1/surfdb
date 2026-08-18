@@ -1,5 +1,5 @@
 import type { SchemaProject } from "../domain";
-import type { Table } from "../domain/types";
+import type { ReferentialAction, Table } from "../domain/types";
 
 export interface Template {
   key: string;
@@ -76,6 +76,7 @@ export function relation(
   sourceFieldName: string,
   targetTableName: string,
   targetFieldName: string,
+  options: { onDelete?: ReferentialAction; onUpdate?: ReferentialAction } = {},
 ): void {
   const source = project.tables.find((t) => t.name === sourceTableName);
   const target = project.tables.find((t) => t.name === targetTableName);
@@ -90,7 +91,8 @@ export function relation(
     sourceFieldId: sourceField.id,
     targetTableId: target.id,
     targetFieldId: targetField.id,
-    onDelete: "cascade",
+    onDelete: options.onDelete ?? "cascade",
+    onUpdate: options.onUpdate,
   });
 }
 
